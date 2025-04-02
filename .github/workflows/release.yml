@@ -1,0 +1,25 @@
+name: Build and Release WHEEL
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install build system
+      run: pip --no-cache-dir --no-color install --upgrade build hatchling
+    - name: Build WHEEL
+      run: python -m build --wheel --no-isolation
+    - name: Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: dist/*.whl

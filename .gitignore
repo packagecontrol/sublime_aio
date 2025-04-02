@@ -1,0 +1,7 @@
+.sublime/
+.venv/
+.vscode/
+build/
+dist/
+src/*.egg-info
+*.pyc

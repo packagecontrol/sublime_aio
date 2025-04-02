@@ -1,0 +1,174 @@
+# AsyncIO for Sublime Text
+
+## Common Notes
+
+```py
+import sublime_aio
+```
+
+First plugin importing `sublime_aio` starts a global event loop
+in a dedicated background thread, which runs forever
+and is shared across plugins.
+
+Commands and event handlers are dispatched asynchronously,
+causing no messurable delay on UI thread.
+
+> [!NOTE]
+> 
+>  ST's asynchronous event handler methods (e.g. `on_modified_async`)
+>  are not supported as task scheduling in UI thread is faster.
+
+
+## Event Listener
+
+This package demonstrates power of asyncio and [simdjson](https://pypi.org/project/pysimdjson/)
+to handle hundrets of thousands of completions smoothly,
+without blocking Sublime Text's UI in any way.
+
+Both, `EventListener` and `ViewEventListener` are supported.
+
+```py
+from __future__ import annotations
+import simdjson
+import sublime_aio
+
+
+class CompletionListener(sublime_aio.ViewEventListener):
+    parser = simdjson.Parser()
+
+    async def on_query_completions(self, prefix, locations):
+        doc = self.parser.parse(data)
+        return (i["label"] for i in doc["items"])
+
+    async def on_modified(self):
+        print(f"{self.view!r} got modified on io loop!")
+
+    @sublime_aio.debounced(200)
+    async def on_selection_modified(self):
+        print(f"Selection of {self.view!r} got modified on io loop!")
+```
+
+## Application Commands
+
+Replace `sublime_plugin.ApplicationCommand` by `sublime_aio.ApplicationCommand` 
+to implement commands running asynchronously on global event loop.
+
+```py
+import sublime_aio
+import sublime_plugin
+
+
+class NameInputHandler(sublime_plugin.TextInputHandler):
+
+    def placeholder(self):
+        return "Enter your name"
+
+
+class MyAsyncCommand(sublime_aio.ApplicationCommand):
+
+    def input_description(self):
+        return "Name:"
+
+    def input(self, args):
+        if "name" not in args:
+            return NameInputHandler()
+
+    async def run(self, name):
+        print(f"Hello {name}!")
+```
+
+Corresponding _Default.sublime-commands_
+
+```json
+[
+    {
+        "caption": "My Async Command",
+        "command": "my_async"
+    },
+]
+```
+
+
+## Window Commands
+
+```py
+import sublime_aio
+import sublime_plugin
+
+
+class NameInputHandler(sublime_plugin.TextInputHandler):
+
+    def placeholder(self):
+        return "Enter your name"
+
+class MyAsyncWindowCommand(sublime_aio.WindowCommand):
+
+    def input_description(self):
+        return "Name:"
+
+    def input(self, args):
+        if "name" not in args:
+            return NameInputHandler()
+
+    async def run(self, name):
+        print(f"Hello {name} on {self.window}!")
+```
+
+Corresponding _Default.sublime-commands_
+
+```json
+[
+    {
+        "caption": "My Async Window Command",
+        "command": "my_async_window"
+    },
+]
+```
+
+
+## View Commands
+
+Due to asynchronous command execution and current ST API restrictions,
+`sublime_aio` can't provide an asynchronous `TextCommand`.
+
+The `edit` token required for text manipulation is only valid 
+during synchronous command execution.
+
+Instead a `sublime_aio.ViewCommand` is provided
+to implement view-specific commands 
+which do not directly alter content.
+
+```py
+import sublime_aio
+import sublime_plugin
+
+
+class NameInputHandler(sublime_plugin.TextInputHandler):
+
+    def placeholder(self):
+        return "Enter your name"
+
+class MyAsyncViewCommand(sublime_aio.ViewCommand):
+
+    def input_description(self):
+        return "Name:"
+
+    def input(self, args):
+        if "name" not in args:
+            return NameInputHandler()
+
+    async def run(self, name):
+        print(f"Inserting \"{name}\" to {self.view} on io loop!")
+        self.view.run_command("insert", {"characters": name})
+```
+
+Corresponding _Default.sublime-commands_
+
+```json
+[
+    {
+        "caption": "My Async View Command",
+        "command": "my_async_view"
+    },
+]
+```

@@ -31,22 +31,22 @@ __all__ = [
 
 # ---- [ internal ] -----------------------------------------------------------
 
-_loop: asyncio.AbstractEventLoop | None = None
-_thread: Thread | None = None
+__loop: asyncio.AbstractEventLoop | None = None
+__thread: Thread | None = None
 
-if _loop is None:
-    _loop = asyncio.new_event_loop()
-    _thread = Thread(target=_loop.run_forever)
-    _thread.daemon = True
-    _thread.start()
+if __loop is None:
+    __loop = asyncio.new_event_loop()
+    __thread = Thread(target=__loop.run_forever)
+    __thread.daemon = True
+    __thread.start()
 
 def on_exit():
-    global _loop
-    if _loop is None:
+    global __loop
+    if __loop is None:
         return
 
-    loop = _loop
-    _loop = None
+    loop = __loop
+    __loop = None
 
     def shutdown():
         for task in asyncio.all_tasks(loop):
@@ -54,7 +54,7 @@ def on_exit():
         loop.stop()
 
     loop.call_soon(shutdown)
-    _thread.join()
+    __thread.join()
     loop.run_until_complete(loop.shutdown_asyncgens())
     loop.close()
     asyncio._set_running_loop(None)
@@ -100,17 +100,17 @@ def debounced(delay_in_ms: int) -> Callable:
             :param coro:
                 The coroutine object to schedule
             """
-            if _loop is None:
+            if __loop is None:
                 del call_at[view.view_id]
                 return
 
-            if call_at[view.view_id] <= _loop.time():
+            if call_at[view.view_id] <= __loop.time():
                 del call_at[view.view_id]
                 if view.is_valid():
-                    _loop.create_task(coro)
+                    __loop.create_task(coro)
                 return
 
-            _loop.call_at(call_at[view.view_id], _debounced_callback, view, coro)
+            __loop.call_at(call_at[view.view_id], _debounced_callback, view, coro)
 
         def wrapper(self, *args, **kwargs):
             """
@@ -121,18 +121,18 @@ def debounced(delay_in_ms: int) -> Callable:
             :param kwargs:
                 The keywords arguments passed to coroutine function by ST API
             """
-            if _loop is None:
+            if __loop is None:
                 return
 
             view = self.view if hasattr(self, 'view') else args[0]
             vid = view.view_id
             pending = vid in call_at
-            call_at[vid] = _loop.time() + delay_in_ms / 1000
+            call_at[vid] = __loop.time() + delay_in_ms / 1000
             if pending:
                 return
 
-            _loop.call_at(call_at[vid], _debounced_callback, view, coro_func(self, *args, **kwargs))
-            _loop._write_to_self()  # wake up event loop
+            __loop.call_at(call_at[vid], _debounced_callback, view, coro_func(self, *args, **kwargs))
+            __loop._write_to_self()  # wake up event loop
 
         return wrapper
 
@@ -166,10 +166,10 @@ def run_coroutine(coro: Coroutine) -> Future:
     :returns:
         An `concurrent.Future` object
     """
-    if _loop is None:
+    if __loop is None:
         raise RuntimeError("No event loop running!")
 
-    return asyncio.run_coroutine_threadsafe(coro, loop=_loop)
+    return asyncio.run_coroutine_threadsafe(coro, loop=__loop)
 
 
 class ApplicationCommand(sublime_plugin.ApplicationCommand):

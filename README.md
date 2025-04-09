@@ -172,3 +172,32 @@ Corresponding _Default.sublime-commands_
     },
 ]
 ```
+
+
+## Run coroutines from synchonous code
+
+Use `sublime_aio.run_coroutine()` to call a coroutine from synchronous code.
+
+It will be executed on event loop's background thread.
+
+```py
+import sublime_aio
+
+async def init1():
+    await asyncio.sleep(1.5)
+    print("Init Task 1 done!")
+
+async def init2():
+    await asyncio.sleep(1.0)
+    print("Init Task 2 done!")
+
+async def init_plugin():
+    print("Initializing plugin...")
+    task1 = asyncio.create_task(init1())
+    task2 = asyncio.create_task(init2())
+    await asyncio.gather(task1, task2)
+
+def plugin_loaded():
+    # Initialize plugin on asyncio event loop
+    sublime_aio.run_coroutine(init_plugin())
+```

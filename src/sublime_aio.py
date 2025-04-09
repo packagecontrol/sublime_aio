@@ -26,7 +26,6 @@ __all__ = [
     # decorators
     "debounced",
     # functions
-    "create_task",
     "run_coroutine"
 ]
 
@@ -40,7 +39,6 @@ if _loop is None:
     _thread = Thread(target=_loop.run_forever)
     _thread.daemon = True
     _thread.start()
-    asyncio._set_running_loop(_loop)
 
 def on_exit():
     global _loop
@@ -174,36 +172,6 @@ def run_coroutine(coro: Coroutine) -> Future:
     return asyncio.run_coroutine_threadsafe(coro, loop=_loop)
 
 
-def create_task(coro: Coroutine) -> Task:
-    """
-    Run coroutine from synchronous code, but don't care about results.
-
-    Example:
-
-    ```py
-    import sublime_aio
-
-    async def an_async_func(arg1, arg2):
-        ...
-
-    def sync_func(arg1, arg2):
-        sublime_aio.create_task(an_async_func(arg1, arg2))
-    ```
-
-    :param coro:
-        The coroutine object to run
-
-    :returns:
-        An `asyncio.Task` object
-    """
-    if _loop is None:
-        raise RuntimeError("No event loop running!")
-
-    task = _loop.create_task(coro)
-    _loop._write_to_self()  # wakeup event loop
-    return task
-
-
 class ApplicationCommand(sublime_plugin.ApplicationCommand):
     """
     An async `Command` instantiated just once.
@@ -212,7 +180,7 @@ class ApplicationCommand(sublime_plugin.ApplicationCommand):
     def run_(self, edit_token, args):
         args = self.filter_args(args)
         try:
-            create_task(self.run(**args) if args else self.run())
+            run_coroutine(self.run(**args) if args else self.run())
         except TypeError as e:
             if 'required positional argument' in str(e):
                 if sublime_api.can_accept_input(self.name(), args):
@@ -244,7 +212,7 @@ class WindowCommand(sublime_plugin.WindowCommand):
     def run_(self, edit_token, args):
         args = self.filter_args(args)
         try:
-            create_task(self.run(**args) if args else self.run())
+            run_coroutine(self.run(**args) if args else self.run())
         except TypeError as e:
             if 'required positional argument' in str(e):
                 if sublime_api.window_can_accept_input(self.window.id(), self.name(), args):
@@ -288,7 +256,7 @@ class ViewCommand(sublime_plugin.TextCommand):
     def run_(self, edit_token, args):
         args = self.filter_args(args)
         try:
-            create_task(self.run(**args) if args else self.run())
+            run_coroutine(self.run(**args) if args else self.run())
         except TypeError as e:
             if 'required positional argument' in str(e):
                 if sublime_api.view_can_accept_input(self.view.id(), self.name(), args):
@@ -353,7 +321,7 @@ class AsyncEventListenerMeta(type):
                         _task.cancel()
 
                     clist = sublime.CompletionList()
-                    _task = create_task(query_completions(clist, coro_func(*args, **kwargs)))
+                    _task = run_coroutine(query_completions(clist, coro_func(*args, **kwargs)))
                     return clist
 
                 attrs[attr_name] = handle_event
@@ -364,7 +332,7 @@ class AsyncEventListenerMeta(type):
                     raise ValueError('Invalid event handler name! Coroutines must not end with "_async"!')
 
                 def handle_event(*args, coro_func=attr_value, **kwargs):
-                    create_task(coro_func(*args, **kwargs))
+                    run_coroutine(coro_func(*args, **kwargs))
 
                 attrs[attr_name] = handle_event
 

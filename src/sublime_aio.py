@@ -53,7 +53,7 @@ def on_exit():
             task.cancel()
         loop.stop()
 
-    loop.call_soon(shutdown)
+    loop.call_soon_threadsafe(shutdown)
     __thread.join()
     loop.run_until_complete(loop.shutdown_asyncgens())
     loop.close()

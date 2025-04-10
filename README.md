@@ -198,6 +198,9 @@ async def init_plugin():
     await asyncio.gather(task1, task2)
 
 def plugin_loaded():
+    def on_done(fut):
+        print("All up and running!")
+
     # Initialize plugin on asyncio event loop
-    sublime_aio.run_coroutine(init_plugin())
+    sublime_aio.run_coroutine(init_plugin()).add_done_callback(on_done)
 ```

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from asyncio import Task
     from concurrent.futures import Future
-    from typing import Callable, Coroutine
+    from typing import Any, Callable, Coroutine
 
 import sublime
 import sublime_api
@@ -90,7 +90,7 @@ def debounced(delay_in_ms: int) -> Callable:
     def decorator(coro_func: Callable) -> Callable:
         call_at = {}
 
-        def _debounced_callback(view: sublime.View, coro: Coroutine):
+        def _debounced_callback(view: sublime.View, coro: Coroutine) -> None:
             """
             Callback running on event loop to debounced schedule coroutine execution
 
@@ -111,7 +111,7 @@ def debounced(delay_in_ms: int) -> Callable:
 
             __loop.call_at(call_at[view.view_id], _debounced_callback, view, coro)
 
-        def wrapper(self, *args, **kwargs):
+        def wrapper(self, *args, **kwargs) -> None:
             """
             Wrapper function called on UI thread to schedule debounced coroutine execution
 
@@ -175,7 +175,7 @@ class ApplicationCommand(sublime_plugin.ApplicationCommand):
     An async `Command` instantiated just once.
     """
 
-    def run_(self, edit_token, args):
+    def run_(self, edit_token: int, args: dict[str, Any]) -> None:
         args = self.filter_args(args)
         try:
             run_coroutine(self.run(**args) if args else self.run())
@@ -193,7 +193,7 @@ class ApplicationCommand(sublime_plugin.ApplicationCommand):
                     return
             raise
 
-    async def run(self):
+    async def run(self) -> None:
         """
         Called when the command is run. Command arguments are passed as keyword
         arguments.
@@ -207,7 +207,7 @@ class WindowCommand(sublime_plugin.WindowCommand):
     retrieved via `self.window <window>`.
     """
 
-    def run_(self, edit_token, args):
+    def run_(self, edit_token: int, args: dict[str, Any]) -> None:
         args = self.filter_args(args)
         try:
             run_coroutine(self.run(**args) if args else self.run())
@@ -226,7 +226,7 @@ class WindowCommand(sublime_plugin.WindowCommand):
                     return
             raise
 
-    async def run(self):
+    async def run(self) -> None:
         """
         Called when the command is run. Command arguments are passed as keyword
         arguments.
@@ -251,7 +251,7 @@ class ViewCommand(sublime_plugin.TextCommand):
     ```
     """
 
-    def run_(self, edit_token, args):
+    def run_(self, edit_token: int, args: dict[str, Any]) -> None:
         args = self.filter_args(args)
         try:
             run_coroutine(self.run(**args) if args else self.run())
@@ -270,7 +270,7 @@ class ViewCommand(sublime_plugin.TextCommand):
                     return
             raise
 
-    async def run(self):
+    async def run(self) -> None:
         """
         Called when the command is run. Command arguments are passed as keyword
         arguments.

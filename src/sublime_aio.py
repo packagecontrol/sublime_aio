@@ -57,7 +57,6 @@ def on_exit():
     __thread.join()
     loop.run_until_complete(loop.shutdown_asyncgens())
     loop.close()
-    asyncio._set_running_loop(None)
 
 atexit.register(on_exit)
 

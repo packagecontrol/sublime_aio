@@ -87,10 +87,10 @@ def debounced(delay_in_ms: int) -> Callable:
             print("debounced ViewEventListener.on_modified_async", self.view.id())
     ```
     """
-    def decorator(coro_func: Callable) -> Callable:
+    def decorator(coro_func: Coroutine) -> Callable:
         call_at = {}
 
-        def _debounced_callback(view: sublime.View, coro: Coroutine) -> None:
+        def _debounced_callback(view: sublime.View, coro_args: tuple) -> None:
             """
             Callback running on event loop to debounced schedule coroutine execution
 
@@ -106,10 +106,11 @@ def debounced(delay_in_ms: int) -> Callable:
             if call_at[view.view_id] <= __loop.time():
                 del call_at[view.view_id]
                 if view.is_valid():
-                    __loop.create_task(coro)
+                    coro_func, self, args, kwargs = coro_args
+                    __loop.create_task(coro_func(self, *args, **kwargs))
                 return
 
-            __loop.call_at(call_at[view.view_id], _debounced_callback, view, coro)
+            __loop.call_at(call_at[view.view_id], _debounced_callback, view, coro_args)
 
         def wrapper(self, *args, **kwargs) -> None:
             """
@@ -130,7 +131,7 @@ def debounced(delay_in_ms: int) -> Callable:
             if pending:
                 return
 
-            __loop.call_soon_threadsafe(_debounced_callback, view, coro_func(self, *args, **kwargs))
+            __loop.call_soon_threadsafe(_debounced_callback, view, (coro_func, self, args, kwargs))
 
         return wrapper
 

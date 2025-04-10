@@ -130,8 +130,7 @@ def debounced(delay_in_ms: int) -> Callable:
             if pending:
                 return
 
-            __loop.call_at(call_at[vid], _debounced_callback, view, coro_func(self, *args, **kwargs))
-            __loop._write_to_self()  # wake up event loop
+            __loop.call_soon_threadsafe(_debounced_callback, view, coro_func(self, *args, **kwargs))
 
         return wrapper
 

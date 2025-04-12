@@ -31,8 +31,8 @@ if TYPE_CHECKING:
         None,
     ]
 
-    EL = TypeVar('EL', bound=sublime_plugin.EventListener)
-    VEL = TypeVar('VEL', bound=sublime_plugin.ViewEventListener)
+    EL = TypeVar('EL', bound='EventListener')
+    VEL = TypeVar('VEL', bound='ViewEventListener')
 
 
 __all__ = [
@@ -142,7 +142,7 @@ def debounced(delay_in_ms: int):
 
             __loop.call_at(call_at[view.view_id], _debounced_callback, view, coro_func)
 
-        def wrapper(self: sublime_plugin.EventListener | sublime_plugin.ViewEventListener, *args: sublime.View) -> None:
+        def wrapper(self: EventListener | ViewEventListener, *args: sublime.View) -> None:
             """
             Wrapper function called on UI thread to schedule debounced coroutine execution
 
@@ -154,7 +154,7 @@ def debounced(delay_in_ms: int):
             if __loop is None:
                 return
 
-            view = self.view if isinstance(self, sublime_plugin.ViewEventListener) else args[0]
+            view = self.view if isinstance(self, ViewEventListener) else args[0]
             vid = view.view_id
             pending = vid in call_at
             call_at[vid] = __loop.time() + delay_in_ms / 1000

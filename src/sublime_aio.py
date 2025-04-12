@@ -84,6 +84,7 @@ def on_exit():
 # ---- [ public ] -------------------------------------------------------------
 
 
+# Using pyright's type inference to get this type right – for now.
 def debounced(delay_in_ms: int):
     """Schedule coroutine for execution as soon as no events arrive for given delay.
 

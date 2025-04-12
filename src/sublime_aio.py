@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import asyncio
 import atexit
 import functools
@@ -14,18 +15,21 @@ import sublime_plugin
 if TYPE_CHECKING:
     from collections.abc import Coroutine
     from concurrent.futures import Future
-    from typing import Any, Callable, ParamSpec, TypeVar, TypeAlias
+    from typing import Any, Callable, List, Tuple, TypeVar, Union
+
+    from typing_extensions import ParamSpec, TypeAlias
 
     P = ParamSpec('P')
     T = TypeVar('T')
 
     BlankCoro: TypeAlias = Coroutine[object, None, None]
-    CompletionsReturnVal: TypeAlias = (
-        sublime.CompletionList
-        | tuple[list[sublime.CompletionValue], sublime.AutoCompleteFlags]
-        | list[sublime.CompletionValue]
-        | None
-    )
+    CompletionValue: TypeAlias = Union[str, Tuple[str, str], sublime.CompletionItem]
+    CompletionsReturnVal: TypeAlias = Union[
+        sublime.CompletionList,
+        Tuple[List[CompletionValue], sublime.AutoCompleteFlags],
+        List[CompletionValue],
+        None,
+    ]
 
     EL = TypeVar('EL', bound=sublime_plugin.EventListener)
     VEL = TypeVar('VEL', bound=sublime_plugin.ViewEventListener)

@@ -23,11 +23,10 @@ if TYPE_CHECKING:
     T = TypeVar('T')
 
     BlankCoro: TypeAlias = Coroutine[object, None, None]
-    CompletionsList: TypeAlias = Union[List[str], List[Tuple[str, str]], List[sublime.CompletionItem]]
     CompletionsReturnVal: TypeAlias = Union[
         sublime.CompletionList,
-        Tuple[CompletionsList, sublime.AutoCompleteFlags],
-        CompletionsList,
+        Tuple[List[sublime.CompletionValue], sublime.AutoCompleteFlags],
+        List[sublime.CompletionValue],
         None,
     ]
 

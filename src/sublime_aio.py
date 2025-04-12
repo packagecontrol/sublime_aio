@@ -136,8 +136,7 @@ def debounced(delay_in_ms: int):
             if call_at[view.view_id] <= __loop.time():
                 del call_at[view.view_id]
                 if view.is_valid():
-                    # Tasks are collected later using `asyncio.all_tasks`.
-                    _ = __loop.create_task(coro_func())
+                    __loop.create_task(coro_func())
                 return
 
             __loop.call_at(call_at[view.view_id], _debounced_callback, view, coro_func)

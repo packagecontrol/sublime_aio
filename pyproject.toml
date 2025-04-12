@@ -24,6 +24,11 @@ build-backend = "hatchling.build"
 packages = ["src"]
 sources = ["src"]
 
+[dependency-groups]
+dev = [
+    "typing-extensions>=4.13.2",
+]
+
 [tool.pyright]
 pythonVersion = "3.8"
 typeCheckingMode = "basic"

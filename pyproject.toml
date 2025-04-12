@@ -23,3 +23,12 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
 sources = ["src"]
+
+[dependency-groups]
+dev = [
+    "typing-extensions>=4.13.2",
+]
+
+[tool.pyright]
+pythonVersion = "3.8"
+typeCheckingMode = "basic"

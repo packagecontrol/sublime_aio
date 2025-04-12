@@ -1,19 +1,38 @@
 from __future__ import annotations
+
 import asyncio
 import atexit
 import traceback
+from functools import partial
 from inspect import iscoroutinefunction
 from threading import Thread
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from asyncio import Task
-    from concurrent.futures import Future
-    from typing import Any, Callable, Coroutine
+from typing import TYPE_CHECKING, overload
 
 import sublime
 import sublime_api
 import sublime_plugin
+
+if TYPE_CHECKING:
+    from collections.abc import Coroutine
+    from concurrent.futures import Future
+    from typing import Any, Callable, List, Tuple, TypeVar, Union
+
+    from typing_extensions import ParamSpec, TypeAlias
+
+    P = ParamSpec('P')
+    T = TypeVar('T')
+
+    BlankCoro: TypeAlias = Coroutine[object, None, None]
+    CompletionsReturnVal: TypeAlias = Union[
+        sublime.CompletionList,
+        Tuple[List[sublime.CompletionValue], sublime.AutoCompleteFlags],
+        List[sublime.CompletionValue],
+        None,
+    ]
+
+    EL = TypeVar('EL', bound='EventListener')
+    VEL = TypeVar('VEL', bound='ViewEventListener')
+
 
 __all__ = [
     # commands
@@ -40,9 +59,11 @@ if __loop is None:
     __thread.daemon = True
     __thread.start()
 
+
+@atexit.register
 def on_exit():
     global __loop
-    if __loop is None:
+    if __loop is None or __thread is None:
         return
 
     loop = __loop
@@ -58,12 +79,13 @@ def on_exit():
     loop.run_until_complete(loop.shutdown_asyncgens())
     loop.close()
 
-atexit.register(on_exit)
 
 # ---- [ public ] -------------------------------------------------------------
 
-def debounced(delay_in_ms: int) -> Callable:
-    """Schedule coroutine for execution as soon as no events arive for given delay.
+
+# Using pyright's type inference to get this type right – for now.
+def debounced(delay_in_ms: int):
+    """Schedule coroutine for execution as soon as no events arrive for given delay.
 
     Performs view-specific tracking and is best suited for the
     `on_modified` and `on_selection_modified` methods.
@@ -87,10 +109,18 @@ def debounced(delay_in_ms: int) -> Callable:
             print("debounced ViewEventListener.on_modified_async", self.view.id())
     ```
     """
-    def decorator(coro_func: Coroutine) -> Callable:
-        call_at = {}
+    @overload
+    def decorator(coro_func: Callable[[EL, sublime.View], BlankCoro]) -> Callable[[EL, sublime.View], None]: ...
 
-        def _debounced_callback(view: sublime.View, coro_args: tuple) -> None:
+    @overload
+    def decorator(coro_func: Callable[[VEL], BlankCoro]) -> Callable[[VEL], None]: ...
+
+    def decorator(
+        coro_func: Callable[[EL, sublime.View], BlankCoro] | Callable[[VEL], BlankCoro],
+    ) -> Callable[..., None]:
+        call_at: dict[int, float] = {}
+
+        def _debounced_callback(view: sublime.View, coro_func: Callable[[], BlankCoro]) -> None:
             """
             Callback running on event loop to debounced schedule coroutine execution
 
@@ -106,13 +136,12 @@ def debounced(delay_in_ms: int) -> Callable:
             if call_at[view.view_id] <= __loop.time():
                 del call_at[view.view_id]
                 if view.is_valid():
-                    coro_func, self, args, kwargs = coro_args
-                    __loop.create_task(coro_func(self, *args, **kwargs))
+                    __loop.create_task(coro_func())
                 return
 
-            __loop.call_at(call_at[view.view_id], _debounced_callback, view, coro_args)
+            __loop.call_at(call_at[view.view_id], _debounced_callback, view, coro_func)
 
-        def wrapper(self, *args, **kwargs) -> None:
+        def wrapper(self: EventListener | ViewEventListener, *args: sublime.View) -> None:
             """
             Wrapper function called on UI thread to schedule debounced coroutine execution
 
@@ -124,21 +153,21 @@ def debounced(delay_in_ms: int) -> Callable:
             if __loop is None:
                 return
 
-            view = self.view if hasattr(self, 'view') else args[0]
+            view = self.view if isinstance(self, ViewEventListener) else args[0]
             vid = view.view_id
             pending = vid in call_at
             call_at[vid] = __loop.time() + delay_in_ms / 1000
             if pending:
                 return
 
-            __loop.call_soon_threadsafe(_debounced_callback, view, (coro_func, self, args, kwargs))
+            __loop.call_soon_threadsafe(_debounced_callback, view, partial(coro_func, self, *args))
 
         return wrapper
 
     return decorator
 
 
-def run_coroutine(coro: Coroutine) -> Future:
+def run_coroutine(coro: Coroutine[object, object, T]) -> Future[T]:
     """
     Run coroutine from synchronous code.
 
@@ -292,17 +321,26 @@ class AsyncEventListenerMeta(type):
     ```
     """
 
-    def __new__(mcs, name, bases, attrs):
+    def __new__(
+        mcs: type[AsyncEventListenerMeta],
+        name: str,
+        bases: tuple[type, ...],
+        attrs: dict[str, object],
+    ) -> AsyncEventListenerMeta:
         for attr_name, attr_value in attrs.items():
             # wrap `async def on_query_completions()` in sync method of same name
             if attr_name == 'on_query_completions' and iscoroutinefunction(attr_value):
                 _task = None
+                completions_coro_func: Callable[..., Coroutine[object, object, CompletionsReturnVal]] = attr_value
 
-                async def query_completions(clist: sublime.CompletionList, on_query_completions: Coroutine):
+                async def query_completions(
+                    clist: sublime.CompletionList,
+                    coro: Coroutine[object, object, CompletionsReturnVal],
+                ) -> None:
                     try:
-                        completions = await on_query_completions
+                        completions = await coro
                         if isinstance(completions, sublime.CompletionList):
-                            clist.set_completions(completions.completions, completions.flags)
+                            clist.set_completions(completions.completions or [], completions.flags)
                         elif isinstance(completions, tuple):
                             clist.set_completions(completions[0], completions[1])
                         else:
@@ -313,27 +351,28 @@ class AsyncEventListenerMeta(type):
                         clist.set_completions([])
                         traceback.print_exc()
 
-                def handle_event(*args, coro_func=attr_value, **kwargs):
+                def on_query_completions(*args: P.args, **kwargs: P.kwargs) -> sublime.CompletionList:
                     nonlocal _task
 
                     if _task:
                         _task.cancel()
 
                     clist = sublime.CompletionList()
-                    _task = run_coroutine(query_completions(clist, coro_func(*args, **kwargs)))
+                    _task = run_coroutine(query_completions(clist, completions_coro_func(*args, **kwargs)))
                     return clist
 
-                attrs[attr_name] = handle_event
+                attrs[attr_name] = on_query_completions
 
             # wrap `async def on_...()` in sync method of same name
             elif attr_name in sublime_plugin.all_callbacks and iscoroutinefunction(attr_value):
                 if attr_name.endswith('_async'):
                     raise ValueError('Invalid event handler name! Coroutines must not end with "_async"!')
+                coro_func: Callable[..., Coroutine[object, object, None]] = attr_value
 
-                def handle_event(*args, coro_func=attr_value, **kwargs):
+                def on_event(*args: P.args, **kwargs: P.kwargs) -> None:
                     run_coroutine(coro_func(*args, **kwargs))
 
-                attrs[attr_name] = handle_event
+                attrs[attr_name] = on_event
 
         return super().__new__(mcs, name, bases, attrs)
 

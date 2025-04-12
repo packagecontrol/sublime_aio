@@ -323,14 +323,22 @@ class AsyncEventListenerMeta(type):
     ```
     """
 
-    def __new__(mcs: type[AsyncEventListenerMeta], name: str, bases: tuple[type, ...], attrs: dict[str, object]) -> AsyncEventListenerMeta:
+    def __new__(
+        mcs: type[AsyncEventListenerMeta],
+        name: str,
+        bases: tuple[type, ...],
+        attrs: dict[str, object],
+    ) -> AsyncEventListenerMeta:
         for attr_name, attr_value in attrs.items():
             # wrap `async def on_query_completions()` in sync method of same name
             if attr_name == 'on_query_completions' and iscoroutinefunction(attr_value):
                 _task = None
                 completions_coro_func: Callable[..., Coroutine[object, object, CompletionsReturnVal]] = attr_value
 
-                async def query_completions(clist: sublime.CompletionList, coro: Coroutine[object, object, CompletionsReturnVal]) -> None:
+                async def query_completions(
+                    clist: sublime.CompletionList,
+                    coro: Coroutine[object, object, CompletionsReturnVal],
+                ) -> None:
                     try:
                         completions = await coro
                         if isinstance(completions, sublime.CompletionList):

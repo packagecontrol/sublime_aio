@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import atexit
-import functools
 import traceback
+from functools import partial
 from inspect import iscoroutinefunction
 from threading import Thread
 from typing import TYPE_CHECKING, overload
@@ -161,7 +161,7 @@ def debounced(delay_in_ms: int):
             if pending:
                 return
 
-            __loop.call_soon_threadsafe(_debounced_callback, view, functools.partial(coro_func, self, *args))
+            __loop.call_soon_threadsafe(_debounced_callback, view, partial(coro_func, self, *args))
 
         return wrapper
 

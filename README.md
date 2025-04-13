@@ -28,7 +28,6 @@ without blocking Sublime Text's UI in any way.
 Both, `EventListener` and `ViewEventListener` are supported.
 
 ```py
-from __future__ import annotations
 import simdjson
 import sublime_aio
 
@@ -47,6 +46,25 @@ class CompletionListener(sublime_aio.ViewEventListener):
     async def on_selection_modified(self):
         print(f"Selection of {self.view!r} got modified on io loop!")
 ```
+
+
+## Text Change Listener
+
+```py
+import sublime_aio
+
+class TextChangeListener(sublime_aio.TextChangeListener):
+
+    async def on_text_changed(self, changes):
+        print(f"{self.buffer!r} changed: {changes}")
+
+    async def on_reload(self):
+        print(f"{self.buffer!r} reloaded")
+
+    async def on_revert(self):
+        print(f"{self.buffer!r} reverted")
+```
+
 
 ## Application Commands
 

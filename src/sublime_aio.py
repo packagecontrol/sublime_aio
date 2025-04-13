@@ -386,7 +386,7 @@ class EventListener(sublime_plugin.EventListener, metaclass=AsyncEventListenerMe
     """
     This class describes an asyncio event listener.
 
-    It extends `sublime.EventListener` to support event handler coroutines
+    It extends `sublime_plugin.EventListener` to support event handler coroutines
     which behave the same way as default methods.
 
     Example:
@@ -407,7 +407,7 @@ class ViewEventListener(sublime_plugin.ViewEventListener, metaclass=AsyncEventLi
     """
     This class describes an asyncio view event listener.
 
-    It extends `sublime.ViewEventListener` to support event handler coroutines
+    It extends `sublime_plugin.ViewEventListener` to support event handler coroutines
     which behave the same way as default methods.
 
     Example:
@@ -420,5 +420,77 @@ class ViewEventListener(sublime_plugin.ViewEventListener, metaclass=AsyncEventLi
         async def on_query_completions(self):
             # note: CompletionLists must return in resolved state!
             return sublime.CompletionList(["item1", "item2"])
+    """
+    pass
+
+
+class AsyncTextChangeListenerMeta(type):
+    """
+    This class describes an asynchronous text change listener meta class.
+
+    It wraps all coroutines which start with `on_` into synchronous methods
+    for ST to execute them. Wrapper methods schedule execution of coroutines
+    in global event loop.
+    """
+
+    def __new__(
+        mcs: type[AsyncTextChangeListenerMeta],
+        name: str,
+        bases: tuple[type, ...],
+        attrs: dict[str, object],
+    ) -> AsyncTextChangeListenerMeta:
+        for attr_name, attr_value in attrs.items():
+            # wrap `async def on_...()` in sync method of same name
+            if attr_name in sublime_plugin.text_change_listener_callbacks and iscoroutinefunction(attr_value):
+                if attr_name.endswith('_async'):
+                    raise ValueError('Invalid event handler name! Coroutines must not end with "_async"!')
+
+                # note: `coro_func` must be part of on_event() signature to
+                #       create unique function object as otherwise all events
+                #       call last `on_...` coroutine defined by listener.
+                #       Handler is not called, when using `partial()`!
+                #       It's actually unclear, why it is working without in
+                #       `AsyncEventListenerMeta`.
+                def on_event(
+                    *args: P.args,
+                    coro_func: Callable[..., Coroutine[object, object, None]] = attr_value,  # pyright: ignore
+                    **kwargs: P.kwargs,
+                ) -> None:
+                    run_coroutine(coro_func(*args, **kwargs))
+
+                attrs[attr_name] = on_event
+
+        return super().__new__(mcs, name, bases, attrs)
+
+
+class TextChangeListener(sublime_plugin.TextChangeListener, metaclass=AsyncTextChangeListenerMeta):
+    """
+    A class that provides event handling about text changes made to a specific
+    Buffer. Is separate from `ViewEventListener` since multiple views can
+    share a single buffer.
+
+    It extends `sublime_plugin.TextChangeListener` to support event handler coroutines
+    which behave the same way as default methods.
+
+    .. since:: 4081
+
+    .. method:: on_text_changed(changes: List[TextChange])
+
+        Called once after changes has been made to a buffer, with detailed
+        information about what has changed.
+
+    .. method:: on_revert()
+
+        Called when the buffer is reverted.
+
+        A revert does not trigger text changes. If the contents of the buffer
+        are required here use `View.substr`.
+
+    .. method:: on_reload()
+
+        Called when the buffer is reloaded.
+
+        A reload does not trigger text changes. If the contents of the buffer
+        are required here use `View.substr`.
     """
     pass

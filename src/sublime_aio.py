@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import atexit
 import traceback
-from functools import partial
 from inspect import iscoroutinefunction
 from threading import Thread
 from typing import TYPE_CHECKING, overload
@@ -85,7 +84,7 @@ def on_exit():
 
 # Using pyright's type inference to get this type right – for now.
 def debounced(delay_in_ms: int):
-    """Schedule coroutine for execution as soon as no events arrive for given delay.
+    """Call coroutine as soon as no more events arrive within specified delay.
 
     Performs view-specific tracking and is best suited for the
     `on_modified` and `on_selection_modified` methods.
@@ -120,47 +119,53 @@ def debounced(delay_in_ms: int):
     ) -> Callable[..., None]:
         call_at: dict[int, float] = {}
 
-        def _debounced_callback(view: sublime.View, coro_func: Callable[[], BlankCoro]) -> None:
+        async def debounce(
+            view: sublime.View,
+            coro_func: Callable,
+            self: EventListener | ViewEventListener,
+            *args
+        ):
             """
-            Callback running on event loop to debounced schedule coroutine execution
+            Coroutine scheduling delayed event handler coroutine execution.
+
+            Event handler is executed if no further event was received within specified delay.
 
             :param view:
-                The view handling the event for
-            :param coro:
-                The coroutine object to schedule
+                The view handling the event for.
+            :param coro_func:
+                The coroutine function (event listener method) to schedule.
+            :param self:
+                The event listener instance for which to schedule event handler.
+            :param args:
+                The arguments passed to coroutine function by ST API.
             """
-            if __loop is None:
-                del call_at[view.view_id]
-                return
-
-            if call_at[view.view_id] <= __loop.time():
-                del call_at[view.view_id]
-                if view.is_valid():
-                    __loop.create_task(coro_func())
-                return
-
-            __loop.call_at(call_at[view.view_id], _debounced_callback, view, coro_func)
+            vid = view.view_id
+            while call_at[vid]:
+                call_at[vid] = False
+                await asyncio.sleep(delay_in_ms / 1000)
+            del call_at[vid]
+            if view.is_valid():
+                await coro_func(self, *args)
 
         def wrapper(self: EventListener | ViewEventListener, *args: sublime.View) -> None:
             """
             Wrapper function called on UI thread to schedule debounced coroutine execution
 
+            :param self:
+                The event listener instance for which to schedule event handler.
             :param args:
-                The arguments passed to coroutine function by ST API
-            :param kwargs:
-                The keywords arguments passed to coroutine function by ST API
+                The arguments passed to coroutine function by ST API.
             """
             if __loop is None:
                 return
 
             view = self.view if isinstance(self, ViewEventListener) else args[0]
-            vid = view.view_id
-            pending = vid in call_at
-            call_at[vid] = __loop.time() + delay_in_ms / 1000
+            pending = view.view_id in call_at
+            call_at[view.view_id] = True
             if pending:
                 return
 
-            __loop.call_soon_threadsafe(_debounced_callback, view, partial(coro_func, self, *args))
+            asyncio.run_coroutine_threadsafe(debounce(view, coro_func, self, *args), loop=__loop)
 
         return wrapper
 

@@ -313,7 +313,7 @@ class ViewCommand(sublime_plugin.TextCommand):
         raise NotImplementedError
 
 
-class AsyncEventListenerMeta(type):
+class AsyncEventListenerType(type):
     """
     This class describes an asynchronous event listener meta class.
 
@@ -327,11 +327,11 @@ class AsyncEventListenerMeta(type):
     """
 
     def __new__(
-        mcs: type[AsyncEventListenerMeta],
+        mcs: type[AsyncEventListenerType],
         name: str,
         bases: tuple[type, ...],
         attrs: dict[str, object],
-    ) -> AsyncEventListenerMeta:
+    ) -> AsyncEventListenerType:
         for attr_name, attr_value in attrs.items():
             # wrap `async def on_query_completions()` in sync method of same name
             if attr_name == 'on_query_completions' and iscoroutinefunction(attr_value):
@@ -382,7 +382,7 @@ class AsyncEventListenerMeta(type):
         return super().__new__(mcs, name, bases, attrs)
 
 
-class EventListener(sublime_plugin.EventListener, metaclass=AsyncEventListenerMeta):
+class EventListener(sublime_plugin.EventListener, metaclass=AsyncEventListenerType):
     """
     This class describes an asyncio event listener.
 
@@ -403,7 +403,7 @@ class EventListener(sublime_plugin.EventListener, metaclass=AsyncEventListenerMe
     pass
 
 
-class ViewEventListener(sublime_plugin.ViewEventListener, metaclass=AsyncEventListenerMeta):
+class ViewEventListener(sublime_plugin.ViewEventListener, metaclass=AsyncEventListenerType):
     """
     This class describes an asyncio view event listener.
 
@@ -424,7 +424,7 @@ class ViewEventListener(sublime_plugin.ViewEventListener, metaclass=AsyncEventLi
     pass
 
 
-class AsyncTextChangeListenerMeta(type):
+class AsyncTextChangeListenerType(type):
     """
     This class describes an asynchronous text change listener meta class.
 
@@ -434,11 +434,11 @@ class AsyncTextChangeListenerMeta(type):
     """
 
     def __new__(
-        mcs: type[AsyncTextChangeListenerMeta],
+        mcs: type[AsyncTextChangeListenerType],
         name: str,
         bases: tuple[type, ...],
         attrs: dict[str, object],
-    ) -> AsyncTextChangeListenerMeta:
+    ) -> AsyncTextChangeListenerType:
         for attr_name, attr_value in attrs.items():
             # wrap `async def on_...()` in sync method of same name
             if attr_name in sublime_plugin.text_change_listener_callbacks and iscoroutinefunction(attr_value):
@@ -450,7 +450,7 @@ class AsyncTextChangeListenerMeta(type):
                 #       call last `on_...` coroutine defined by listener.
                 #       Handler is not called, when using `partial()`!
                 #       It's actually unclear, why it is working without in
-                #       `AsyncEventListenerMeta`.
+                #       `AsyncEventListenerType`.
                 def on_event(
                     *args: P.args,
                     coro_func: Callable[..., Coroutine[object, object, None]] = attr_value,  # pyright: ignore
@@ -463,7 +463,7 @@ class AsyncTextChangeListenerMeta(type):
         return super().__new__(mcs, name, bases, attrs)
 
 
-class TextChangeListener(sublime_plugin.TextChangeListener, metaclass=AsyncTextChangeListenerMeta):
+class TextChangeListener(sublime_plugin.TextChangeListener, metaclass=AsyncTextChangeListenerType):
     """
     A class that provides event handling about text changes made to a specific
     Buffer. Is separate from `ViewEventListener` since multiple views can

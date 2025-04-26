@@ -1,7 +1,16 @@
+# editors
 .sublime/
-.venv/
 .vscode/
-build/
-dist/
-src/*.egg-info
+
+# python cache
+__pycache__/
 *.pyc
+
+# tool cache
+.pytest_cache/
+.mypy_cache/
+.venv/
+*.lock
+
+# build output
+dist/

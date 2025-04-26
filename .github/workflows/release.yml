@@ -16,7 +16,7 @@ jobs:
       with:
         python-version: '3.12'
     - name: Install build system
-      run: pip --no-cache-dir --no-color install --upgrade build hatchling
+      run: pip --no-cache-dir --no-color install --upgrade build flit_core
     - name: Build WHEEL
       run: python -m build --wheel --no-isolation
     - name: Release

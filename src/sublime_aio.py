@@ -44,8 +44,10 @@ __all__ = [
     # decorators
     "debounced",
     # functions
-    "run_coroutine"
+    "run_coroutine",
 ]
+
+__version__ = "0.1.3"
 
 # ---- [ internal ] -----------------------------------------------------------
 

@@ -5,6 +5,7 @@ import atexit
 import traceback
 from inspect import iscoroutinefunction
 from threading import Thread
+from time import monotonic as now
 from typing import TYPE_CHECKING, overload
 
 import sublime
@@ -119,6 +120,7 @@ def debounced(delay_in_ms: int):
     def decorator(
         coro_func: Callable[[EL, sublime.View], BlankCoro] | Callable[[VEL], BlankCoro],
     ) -> Callable[..., None]:
+        # Maps a view id to a timestamp of a monotic clock in fractional seconds.
         call_at: dict[int, float] = {}
 
         async def debounce(
@@ -141,11 +143,13 @@ def debounced(delay_in_ms: int):
             :param args:
                 The arguments passed to coroutine function by ST API.
             """
-            vid = view.view_id
-            while call_at[vid]:
-                call_at[vid] = False
-                await asyncio.sleep(delay_in_ms / 1000)
-            del call_at[vid]
+            while True:
+                time_to_wait = delay_in_ms / 1000 + call_at[view.view_id] - now()
+                if time_to_wait <= 0:
+                    del call_at[view.view_id]
+                    break
+                await asyncio.sleep(time_to_wait)
+
             if view.is_valid():
                 await coro_func(self, *args)
 
@@ -162,10 +166,12 @@ def debounced(delay_in_ms: int):
                 return
 
             view = self.view if isinstance(self, ViewEventListener) else args[0]
-            pending = view.view_id in call_at
-            call_at[view.view_id] = True
-            if pending:
+
+            if view.view_id in call_at:
+                call_at[view.view_id] = now()
                 return
+
+            call_at[view.view_id] = now()
 
             asyncio.run_coroutine_threadsafe(debounce(view, coro_func, self, *args), loop=__loop)
 

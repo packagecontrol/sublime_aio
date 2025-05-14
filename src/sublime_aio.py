@@ -4,7 +4,7 @@ import asyncio
 import atexit
 import traceback
 from inspect import iscoroutinefunction
-from threading import Thread
+from threading import Lock, Thread
 from time import monotonic as now
 from typing import TYPE_CHECKING, overload
 
@@ -122,6 +122,7 @@ def debounced(delay_in_ms: int):
     ) -> Callable[..., None]:
         # Maps a view id to a timestamp of a monotic clock in fractional seconds.
         call_at: dict[int, float] = {}
+        lock = Lock()
 
         async def debounce(
             view: sublime.View,
@@ -144,10 +145,12 @@ def debounced(delay_in_ms: int):
                 The arguments passed to coroutine function by ST API.
             """
             while True:
-                time_to_wait = delay_in_ms / 1000 + call_at[view.view_id] - now()
-                if time_to_wait <= 0:
-                    del call_at[view.view_id]
-                    break
+                with lock:
+                    time_to_wait = delay_in_ms / 1000 + call_at[view.view_id] - now()
+                    if time_to_wait <= 0:
+                        del call_at[view.view_id]
+                        break
+                
                 await asyncio.sleep(time_to_wait)
 
             if view.is_valid():
@@ -167,11 +170,11 @@ def debounced(delay_in_ms: int):
 
             view = self.view if isinstance(self, ViewEventListener) else args[0]
 
-            if view.view_id in call_at:
+            with lock:
+                if view.view_id in call_at:
+                    call_at[view.view_id] = now()
+                    return
                 call_at[view.view_id] = now()
-                return
-
-            call_at[view.view_id] = now()
 
             asyncio.run_coroutine_threadsafe(debounce(view, coro_func, self, *args), loop=__loop)
 

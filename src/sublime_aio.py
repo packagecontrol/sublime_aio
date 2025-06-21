@@ -253,6 +253,12 @@ class WindowCommand(sublime_plugin.WindowCommand):
     retrieved via `self.window <window>`.
     """
 
+    def __init__(self, window: sublime.Window):
+        """:meta private:"""
+
+        self.window: Window = Window(window.id())
+        """ The asyncio supporting `Window` this command is attached to. """
+
     def run_(self, edit_token: int, args: dict[str, Any]) -> None:
         args = self.filter_args(args)
         try:
@@ -505,3 +511,82 @@ class TextChangeListener(sublime_plugin.TextChangeListener, metaclass=AsyncTextC
         are required here use `View.substr`.
     """
     pass
+
+
+class InputCancelledError(Exception):
+    """
+    This class describes an input cancelled error.
+
+    It is raised whenever input panels or quick panels are closed via escape key.
+    """
+    pass
+
+
+class Window(sublime.Window):
+    """
+    This class describes an extended `sublime.Window`.
+
+    It overrides some methods with coroutines.
+    """
+
+    async def show_input_panel(
+        self,
+        caption: str,
+        initial_text: str = "",
+        on_change: Callable[[sublime.View, str], None] | None = None,
+    ) -> str:
+        view = None
+        fut = asyncio.Future()
+
+        def cancel() -> None:
+            if _loop:
+                _loop.call_soon_threadsafe(fut.set_exception, InputCancelledError)
+
+        def done(text: str) -> None:
+            if _loop:
+                _loop.call_soon_threadsafe(fut.set_result, text)
+
+        def change(text: str) -> None:
+            if view is not None:
+                run_coroutine(on_change(view, text))
+
+        view = super().show_input_panel(
+            caption=caption,
+            initial_text=initial_text,
+            on_done=done,
+            on_change=change if on_change else None,
+            on_cancel=cancel,
+        )
+
+        return await fut
+
+    async def show_quick_panel(
+        self,
+        items: list[str] | list[list[str]] | list[sublime.QuickPanelItem],
+        flags: sublime.QuickPanelFlags = sublime.QuickPanelFlags.NONE,
+        selected_index: int = -1,
+        on_highlight: Callable[[int], None] | None = None,
+        placeholder: str | None = None,
+    ) -> int:
+        fut = asyncio.Future()
+
+        def highlight(index):
+            run_coroutine(on_highlight(index))
+
+        def select(index):
+            if _loop:
+                if index == -1:
+                    _loop.call_soon_threadsafe(fut.set_exception, InputCancelledError)
+                else:
+                    _loop.call_soon_threadsafe(fut.set_result, index)
+
+        super().show_quick_panel(
+            items=items,
+            flags=flags,
+            selected_index=1,
+            placeholder=placeholder,
+            on_highlight=highlight if on_highlight else None,
+            on_select=select,
+        )
+
+        return await fut

@@ -222,3 +222,82 @@ def plugin_loaded():
     # Initialize plugin on asyncio event loop
     sublime_aio.run_coroutine(init_plugin()).add_done_callback(on_done)
 ```
+
+
+## Window
+
+The library provides a `Window` class based on `sublime.Window`
+to provide some asyncio complient methods.
+
+Note: Most of ST's API functions are fast enough to not need to be coroutines!
+
+```py
+class Window(sublime.Window):
+    
+    async def show_input_panel(
+        self,
+        caption: str,
+        initial_text: str = "",
+        on_change: Callable[[sublime.View, str], None] | None = None,
+    ) -> str:
+        ...
+
+    async def show_quick_panel(
+        self,
+        items: list[str] | list[list[str]] | list[sublime.QuickPanelItem],
+        flags: sublime.QuickPanelFlags = sublime.QuickPanelFlags.NONE,
+        selected_index: int = -1,
+        on_highlight: Callable[[int], None] | None = None,
+        placeholder: str | None = None,
+    ) -> int:
+        ...
+```
+
+
+### Using Input Panels
+
+To await input of input panels within asyncio complient commands,
+use `await sublime_aio.Window.show_input_panel()`.
+
+The coroutine returns selected index or raises `InputCancelledError`, 
+if it was closed via <kbd>escape</kbd>`.
+
+```py
+class AsyncInputCommand(sublime_aio.WindowCommand):
+    async def run(self):
+        try:
+            text = await self.window.show_input_panel(
+                caption="Async Input",
+                on_change=self.on_change
+            )
+            print("got", text)
+        except sublime_aio.InputCancelledError:
+            print("input cancelled")
+
+    async def on_change(self, view: sublime.View, text: str) -> None:
+        """Optional content changed event handler"""
+        print(f"{view}: content changed to {text}")
+```
+
+
+### Using Quick Panels
+
+To await selected quick panel items within asyncio complient commands,
+use `await sublime_aio.Window.show_quick_panel()`.
+
+The coroutine returns selected index or raises `InputCancelledError`, 
+if it was closed via <kbd>escape</kbd>`.
+
+```py
+class AsyncQuickPanelCommand(sublime_aio.WindowCommand):
+    async def run(self):
+        try:
+            index = await self.window.show_quick_panel(["foo", "bar"], on_highlight=self.on_highlight)
+            print("got", index)
+        except sublime_aio.InputCancelledError:
+            print("quick panel cancelled")
+
+    async def on_highlight(self, index: int) -> None:
+        """Optional item selection changed event handler"""
+        print("selected", index)
+```

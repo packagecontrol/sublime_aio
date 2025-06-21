@@ -52,24 +52,24 @@ __version__ = "0.1.5"
 
 # ---- [ internal ] -----------------------------------------------------------
 
-__loop: asyncio.AbstractEventLoop | None = None
-__thread: Thread | None = None
+_loop: asyncio.AbstractEventLoop | None = None
+_thread: Thread | None = None
 
-if __loop is None:
-    __loop = asyncio.new_event_loop()
-    __thread = Thread(target=__loop.run_forever)
-    __thread.daemon = True
-    __thread.start()
+if _loop is None:
+    _loop = asyncio.new_event_loop()
+    _thread = Thread(target=_loop.run_forever)
+    _thread.daemon = True
+    _thread.start()
 
 
 @atexit.register
 def on_exit():
-    global __loop
-    if __loop is None or __thread is None:
+    global _loop
+    if _loop is None or _thread is None:
         return
 
-    loop = __loop
-    __loop = None
+    loop = _loop
+    _loop = None
 
     def shutdown():
         for task in asyncio.all_tasks(loop):
@@ -77,7 +77,7 @@ def on_exit():
         loop.stop()
 
     loop.call_soon_threadsafe(shutdown)
-    __thread.join()
+    _thread.join()
     loop.run_until_complete(loop.shutdown_asyncgens())
     loop.close()
 
@@ -165,7 +165,7 @@ def debounced(delay_in_ms: int):
             :param args:
                 The arguments passed to coroutine function by ST API.
             """
-            if __loop is None:
+            if _loop is None:
                 return
 
             view = self.view if isinstance(self, ViewEventListener) else args[0]
@@ -176,7 +176,7 @@ def debounced(delay_in_ms: int):
                     return
                 call_at[view.view_id] = now()
 
-            asyncio.run_coroutine_threadsafe(debounce(view, coro_func, self, *args), loop=__loop)
+            asyncio.run_coroutine_threadsafe(debounce(view, coro_func, self, *args), loop=_loop)
 
         return wrapper
 
@@ -210,10 +210,10 @@ def run_coroutine(coro: Coroutine[object, object, T]) -> Future[T]:
     :returns:
         An `concurrent.Future` object
     """
-    if __loop is None:
+    if _loop is None:
         raise RuntimeError("No event loop running!")
 
-    return asyncio.run_coroutine_threadsafe(coro, loop=__loop)
+    return asyncio.run_coroutine_threadsafe(coro, loop=_loop)
 
 
 class ApplicationCommand(sublime_plugin.ApplicationCommand):

@@ -216,6 +216,20 @@ def run_coroutine(coro: Coroutine[object, object, T]) -> Future[T]:
     return asyncio.run_coroutine_threadsafe(coro, loop=_loop)
 
 
+def active_window() -> Window:
+    """
+    :returns: The most recently used `Window`.
+    """
+    return Window(sublime_api.active_window())
+
+
+def windows() -> list[Window]:
+    """
+    :returns: A list of all the open windows.
+    """
+    return [Window(id) for id in sublime_api.windows()]
+
+
 class ApplicationCommand(sublime_plugin.ApplicationCommand):
     """
     An async `Command` instantiated just once.

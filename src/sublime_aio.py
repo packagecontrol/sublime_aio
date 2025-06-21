@@ -547,7 +547,7 @@ class Window(sublime.Window):
         self,
         caption: str,
         initial_text: str = "",
-        on_change: Callable[[sublime.View, str], None] | None = None,
+        on_change: Callable[[sublime.View, str], Coroutine[object, object, T]] | None = None,
     ) -> str:
         view = None
         fut = asyncio.Future()
@@ -579,7 +579,7 @@ class Window(sublime.Window):
         items: list[str] | list[list[str]] | list[sublime.QuickPanelItem],
         flags: sublime.QuickPanelFlags = sublime.QuickPanelFlags.NONE,
         selected_index: int = -1,
-        on_highlight: Callable[[int], None] | None = None,
+        on_highlight: Callable[[int], Coroutine[object, object, T]] | None = None,
         placeholder: str | None = None,
     ) -> int:
         fut = asyncio.Future()

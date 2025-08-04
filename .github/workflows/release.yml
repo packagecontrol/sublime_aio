@@ -7,16 +7,17 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    name: Create and publish release
     permissions:
       contents: write
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-python@v5
       with:
-        python-version: '3.12'
+        python-version: 3.13
     - name: Install build system
-      run: pip --no-cache-dir --no-color install --upgrade build flit_core
+      run: pip --disable-pip-version-check --no-cache-dir --no-color install --upgrade build flit_core
     - name: Build WHEEL
       run: python -m build --wheel --no-isolation
     - name: Release

@@ -1,0 +1,22 @@
+name: Publish Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  release:
+    name: Create and publish release
+    env:
+      GH_TOKEN: ${{ github.token }}
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: 3.13
+      - name: Install uv
+        run: pip --disable-pip-version-check --no-color install uv
+      - name: Building wheel and publishing release
+        run: scripts/release

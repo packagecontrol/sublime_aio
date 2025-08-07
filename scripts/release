@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+package=$(ls src/)
+version=$(uv run --quiet python -c "from src.${package} import __version__;print(__version__)")
+[ "$version" != "" ] && \
+uv build --wheel && \
+gh release create --generate-notes --latest -t "v${version}" "v${version}" dist/*.whl

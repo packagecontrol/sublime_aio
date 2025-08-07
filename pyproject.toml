@@ -17,14 +17,17 @@ requires-python = ">= 3.8"
 requires = ["flit_core"]
 build-backend = "flit_core.buildapi"
 
-[tool.flit.sdist]
-include = ["src/*.py"]
-exclude = ["**/__pycache__/", "**/.*/", "*.lock"]
-
 [dependency-groups]
 dev = [
     "typing-extensions>=4.13.2",
 ]
+
+[tool.black]
+line-length = 100
+
+[tool.flit.sdist]
+include = ["src/*.py"]
+exclude = ["**/__pycache__/", "**/.*/", "*.lock"]
 
 [tool.pyright]
 pythonVersion = "3.8"

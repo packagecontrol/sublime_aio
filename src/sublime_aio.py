@@ -19,8 +19,8 @@ if TYPE_CHECKING:
 
     from typing_extensions import ParamSpec, TypeAlias
 
-    P = ParamSpec('P')
-    T = TypeVar('T')
+    P = ParamSpec("P")
+    T = TypeVar("T")
 
     BlankCoro: TypeAlias = Coroutine[object, None, None]
     CompletionsReturnVal: TypeAlias = Union[
@@ -30,8 +30,8 @@ if TYPE_CHECKING:
         None,
     ]
 
-    EL = TypeVar('EL', bound='EventListener')
-    VEL = TypeVar('VEL', bound='ViewEventListener')
+    EL = TypeVar("EL", bound="EventListener")
+    VEL = TypeVar("VEL", bound="ViewEventListener")
 
 
 __all__ = [
@@ -111,8 +111,11 @@ def debounced(delay_in_ms: int):
             print("debounced ViewEventListener.on_modified_async", self.view.id())
     ```
     """
+
     @overload
-    def decorator(coro_func: Callable[[EL, sublime.View], BlankCoro]) -> Callable[[EL, sublime.View], None]: ...
+    def decorator(
+        coro_func: Callable[[EL, sublime.View], BlankCoro],
+    ) -> Callable[[EL, sublime.View], None]: ...
 
     @overload
     def decorator(coro_func: Callable[[VEL], BlankCoro]) -> Callable[[VEL], None]: ...
@@ -125,10 +128,7 @@ def debounced(delay_in_ms: int):
         lock = Lock()
 
         async def debounce(
-            view: sublime.View,
-            coro_func: Callable,
-            self: EventListener | ViewEventListener,
-            *args
+            view: sublime.View, coro_func: Callable, self: EventListener | ViewEventListener, *args
         ):
             """
             Coroutine scheduling delayed event handler coroutine execution.
@@ -150,7 +150,7 @@ def debounced(delay_in_ms: int):
                     if time_to_wait <= 0:
                         del call_at[view.view_id]
                         break
-                
+
                 await asyncio.sleep(time_to_wait)
 
             if view.is_valid():
@@ -240,15 +240,11 @@ class ApplicationCommand(sublime_plugin.ApplicationCommand):
         try:
             run_coroutine(self.run(**args) if args else self.run())
         except TypeError as e:
-            if 'required positional argument' in str(e):
+            if "required positional argument" in str(e):
                 if sublime_api.can_accept_input(self.name(), args):
                     sublime.active_window().run_command(
-                        'show_overlay',
-                        {
-                            'overlay': 'command_palette',
-                            'command': self.name(),
-                            'args': args
-                        }
+                        "show_overlay",
+                        {"overlay": "command_palette", "command": self.name(), "args": args},
                     )
                     return
             raise
@@ -278,16 +274,12 @@ class WindowCommand(sublime_plugin.WindowCommand):
         try:
             run_coroutine(self.run(**args) if args else self.run())
         except TypeError as e:
-            if 'required positional argument' in str(e):
+            if "required positional argument" in str(e):
                 if sublime_api.window_can_accept_input(self.window.id(), self.name(), args):
                     sublime_api.window_run_command(
                         self.window.id(),
-                        'show_overlay',
-                        {
-                            'overlay': 'command_palette',
-                            'command': self.name(),
-                            'args': args
-                        }
+                        "show_overlay",
+                        {"overlay": "command_palette", "command": self.name(), "args": args},
                     )
                     return
             raise
@@ -322,16 +314,12 @@ class ViewCommand(sublime_plugin.TextCommand):
         try:
             run_coroutine(self.run(**args) if args else self.run())
         except TypeError as e:
-            if 'required positional argument' in str(e):
+            if "required positional argument" in str(e):
                 if sublime_api.view_can_accept_input(self.view.id(), self.name(), args):
                     sublime_api.window_run_command(
                         sublime_api.view_window(self.view.id()),
-                        'show_overlay',
-                        {
-                            'overlay': 'command_palette',
-                            'command': self.name(),
-                            'args': args
-                        }
+                        "show_overlay",
+                        {"overlay": "command_palette", "command": self.name(), "args": args},
                     )
                     return
             raise
@@ -365,9 +353,11 @@ class AsyncEventListenerType(type):
     ) -> AsyncEventListenerType:
         for attr_name, attr_value in attrs.items():
             # wrap `async def on_query_completions()` in sync method of same name
-            if attr_name == 'on_query_completions' and iscoroutinefunction(attr_value):
+            if attr_name == "on_query_completions" and iscoroutinefunction(attr_value):
                 _task = None
-                completions_coro_func: Callable[..., Coroutine[object, object, CompletionsReturnVal]] = attr_value
+                completions_coro_func: Callable[
+                    ..., Coroutine[object, object, CompletionsReturnVal]
+                ] = attr_value
 
                 async def query_completions(
                     clist: sublime.CompletionList,
@@ -387,22 +377,28 @@ class AsyncEventListenerType(type):
                         clist.set_completions([])
                         traceback.print_exc()
 
-                def on_query_completions(*args: P.args, **kwargs: P.kwargs) -> sublime.CompletionList:
+                def on_query_completions(
+                    *args: P.args, **kwargs: P.kwargs
+                ) -> sublime.CompletionList:
                     nonlocal _task
 
                     if _task:
                         _task.cancel()
 
                     clist = sublime.CompletionList()
-                    _task = run_coroutine(query_completions(clist, completions_coro_func(*args, **kwargs)))
+                    _task = run_coroutine(
+                        query_completions(clist, completions_coro_func(*args, **kwargs))
+                    )
                     return clist
 
                 attrs[attr_name] = on_query_completions
 
             # wrap `async def on_...()` in sync method of same name
             elif attr_name in sublime_plugin.all_callbacks and iscoroutinefunction(attr_value):
-                if attr_name.endswith('_async'):
-                    raise ValueError('Invalid event handler name! Coroutines must not end with "_async"!')
+                if attr_name.endswith("_async"):
+                    raise ValueError(
+                        'Invalid event handler name! Coroutines must not end with "_async"!'
+                    )
                 coro_func: Callable[..., Coroutine[object, object, None]] = attr_value
 
                 def on_event(*args: P.args, **kwargs: P.kwargs) -> None:
@@ -431,6 +427,7 @@ class EventListener(sublime_plugin.EventListener, metaclass=AsyncEventListenerTy
             # note: CompletionLists must return in resolved state!
             return sublime.CompletionList(["item1", "item2"])
     """
+
     pass
 
 
@@ -452,6 +449,7 @@ class ViewEventListener(sublime_plugin.ViewEventListener, metaclass=AsyncEventLi
             # note: CompletionLists must return in resolved state!
             return sublime.CompletionList(["item1", "item2"])
     """
+
     pass
 
 
@@ -472,9 +470,13 @@ class AsyncTextChangeListenerType(type):
     ) -> AsyncTextChangeListenerType:
         for attr_name, attr_value in attrs.items():
             # wrap `async def on_...()` in sync method of same name
-            if attr_name in sublime_plugin.text_change_listener_callbacks and iscoroutinefunction(attr_value):
-                if attr_name.endswith('_async'):
-                    raise ValueError('Invalid event handler name! Coroutines must not end with "_async"!')
+            if attr_name in sublime_plugin.text_change_listener_callbacks and iscoroutinefunction(
+                attr_value
+            ):
+                if attr_name.endswith("_async"):
+                    raise ValueError(
+                        'Invalid event handler name! Coroutines must not end with "_async"!'
+                    )
 
                 # note: `coro_func` must be part of on_event() signature to
                 #       create unique function object as otherwise all events
@@ -484,7 +486,9 @@ class AsyncTextChangeListenerType(type):
                 #       `AsyncEventListenerType`.
                 def on_event(
                     *args: P.args,
-                    coro_func: Callable[..., Coroutine[object, object, None]] = attr_value,  # pyright: ignore
+                    coro_func: Callable[
+                        ..., Coroutine[object, object, None]
+                    ] = attr_value,  # pyright: ignore
                     **kwargs: P.kwargs,
                 ) -> None:
                     run_coroutine(coro_func(*args, **kwargs))
@@ -524,6 +528,7 @@ class TextChangeListener(sublime_plugin.TextChangeListener, metaclass=AsyncTextC
         A reload does not trigger text changes. If the contents of the buffer
         are required here use `View.substr`.
     """
+
     pass
 
 
@@ -533,6 +538,7 @@ class InputCancelledError(Exception):
 
     It is raised whenever input panels or quick panels are closed via escape key.
     """
+
     pass
 
 

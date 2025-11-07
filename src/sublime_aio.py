@@ -35,17 +35,20 @@ if TYPE_CHECKING:
 
 
 __all__ = [
-    # commands
+    "__version__",
+    "active_window",
     "ApplicationCommand",
-    "WindowCommand",
-    "ViewCommand",
-    # listeners
-    "EventListener",
-    "ViewEventListener",
-    # decorators
     "debounced",
-    # functions
+    "EventListener",
+    "InputCancelledError",
     "run_coroutine",
+    "TextChangeListener",
+    "View",
+    "ViewCommand",
+    "ViewEventListener",
+    "Window",
+    "WindowCommand",
+    "windows",
 ]
 
 __version__ = "0.1.5"

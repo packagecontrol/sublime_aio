@@ -549,6 +549,112 @@ class Window(sublime.Window):
     It overrides some methods with coroutines.
     """
 
+    def active_view(self) -> View | None:
+        """
+        :returns: The currently edited `View`.
+        """
+        view_id = sublime_api.window_active_view(self.window_id)
+        if view_id == 0:
+            return None
+        else:
+            return View(view_id)
+
+    def new_file(self, flags=sublime.NewFileFlags.NONE, syntax="") -> View:
+        """
+        Create a new empty file.
+
+        :param flags: Either ``0``, `NewFileFlags.TRANSIENT` or `NewFileFlags.ADD_TO_SELECTION`.
+        :param syntax: The name of the syntax to apply to the file.
+        :returns: The view for the file.
+        """
+        return View(sublime_api.window_new_file(self.window_id, flags, syntax))
+
+    def open_file(self, fname: str, flags=sublime.NewFileFlags.NONE, group=-1) -> View:
+        """
+        Open the named file. If the file is already opened, it will be brought
+        to the front. Note that as file loading is asynchronous, operations on
+        the returned view won't be possible until its ``is_loading()`` method
+        returns ``False``.
+
+        :param fname: The path to the file to open.
+        :param flags: `NewFileFlags`
+        :param group: The group to add the sheet to. ``-1`` for the active group.
+        """
+        return View(sublime_api.window_open_file(self.window_id, fname, flags, group))
+
+    def find_open_file(self, fname: str, group=-1) -> View | None:
+        """
+        Find a opened file by file name.
+
+        :param fname: The path to the file to open.
+        :param group: The group in which to search for the file. ``-1`` for any group.
+
+        :returns: The `View` to the file or ``None`` if the file isn't open.
+        """
+        view_id = sublime_api.window_find_open_file(self.window_id, fname, group)
+        if view_id == 0:
+            return None
+        else:
+            return View(view_id)
+
+    def views(self, *, include_transient: bool=False) -> list[View]:
+        """
+        :param include_transient: Whether the transient sheet should be included.
+
+            .. since:: 4081
+        :returns: All open sheets in the window.
+        """
+        view_ids = sublime_api.window_views(self.window_id, include_transient)
+        return [View(x) for x in view_ids]
+
+    def active_view_in_group(self, group: int) -> View | None:
+        """
+        :returns: The currently focused `View` in the given group.
+        """
+        view_id = sublime_api.window_active_view_in_group(self.window_id, group)
+        if view_id == 0:
+            return None
+        else:
+            return View(view_id)
+
+    def views_in_group(self, group: int) -> list[View]:
+        """
+        :returns: A list of all views in the specified group.
+        """
+        view_ids = sublime_api.window_views_in_group(self.window_id, group)
+        return [View(x) for x in view_ids]
+
+    def transient_view_in_group(self, group: int) -> View | None:
+        """
+        :returns: The transient view in the specified group.
+        """
+        view_id = sublime_api.window_transient_view_in_group(self.window_id, group)
+        if view_id != 0:
+            return View(view_id)
+        else:
+            return None
+
+    def create_output_panel(self, name: str, unlisted: bool=False) -> View:
+        """
+        Find the `View` associated with the named output panel, creating it if
+        required. The output panel can be shown by running the ``show_panel``
+        window command, with the ``panel`` argument set to the name with
+        an ``"output."`` prefix.
+
+        :param name: The name of the output panel.
+        :param unlisted: Control if the output panel should be listed in the panel switcher.
+        """
+        return View(sublime_api.window_create_output_panel(self.window_id, name, unlisted, None)[0])
+
+    def find_output_panel(self, name: str) -> View | None:
+        """
+        :returns:
+            The `View` associated with the named output panel, or ``None`` if
+            the output panel does not exist.
+        """
+        view_id, _ = sublime_api.window_find_output_panel(self.window_id, name)
+        return View(view_id) if view_id else None
+
     async def show_input_panel(
         self,
         caption: str,
@@ -610,3 +716,20 @@ class Window(sublime.Window):
         )
 
         return await fut
+
+
+class View(sublime.View):
+
+    def window(self) -> Window | None:
+        """
+        :returns: A reference to the window containing the view, if any.
+        """
+        window_id = sublime_api.view_window(self.view_id)
+        if window_id == 0:
+            return None
+        else:
+            return Window(window_id)
+
+    def clones(self) -> list[View]:
+        """ :returns: All the other views into the same `Buffer`. See `View`. """
+        return list(map(View, sublime_api.view_clones(self.view_id)))

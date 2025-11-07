@@ -249,7 +249,7 @@ class ApplicationCommand(sublime_plugin.ApplicationCommand):
                     return
             raise
 
-    async def run(self) -> None:
+    async def run(self, *args, **kwargs) -> None:
         """
         Called when the command is run. Command arguments are passed as keyword
         arguments.
@@ -284,7 +284,7 @@ class WindowCommand(sublime_plugin.WindowCommand):
                     return
             raise
 
-    async def run(self) -> None:
+    async def run(self, *args, **kwargs) -> None:
         """
         Called when the command is run. Command arguments are passed as keyword
         arguments.
@@ -324,7 +324,7 @@ class ViewCommand(sublime_plugin.TextCommand):
                     return
             raise
 
-    async def run(self) -> None:
+    async def run(self, *args, **kwargs) -> None:
         """
         Called when the command is run. Command arguments are passed as keyword
         arguments.

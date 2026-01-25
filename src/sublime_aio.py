@@ -238,7 +238,7 @@ class ApplicationCommand(sublime_plugin.ApplicationCommand):
     An async `Command` instantiated just once.
     """
 
-    def run_(self, edit_token: int, args: dict[str, Any]) -> None:
+    def run_(self, edit_token: int, args: sublime.CommandArgs) -> None:
         args = self.filter_args(args)
         try:
             run_coroutine(self.run(**args) if args else self.run())
@@ -252,7 +252,7 @@ class ApplicationCommand(sublime_plugin.ApplicationCommand):
                     return
             raise
 
-    async def run(self, *args, **kwargs) -> None:
+    async def run(self, **kwargs) -> None:
         """
         Called when the command is run. Command arguments are passed as keyword
         arguments.
@@ -272,7 +272,7 @@ class WindowCommand(sublime_plugin.WindowCommand):
         self.window: Window = Window(window.id())
         """ The asyncio supporting `Window` this command is attached to. """
 
-    def run_(self, edit_token: int, args: dict[str, Any]) -> None:
+    def run_(self, edit_token: int, args: sublime.CommandArgs) -> None:
         args = self.filter_args(args)
         try:
             run_coroutine(self.run(**args) if args else self.run())
@@ -287,7 +287,7 @@ class WindowCommand(sublime_plugin.WindowCommand):
                     return
             raise
 
-    async def run(self, *args, **kwargs) -> None:
+    async def run(self, **kwargs) -> None:
         """
         Called when the command is run. Command arguments are passed as keyword
         arguments.
@@ -312,7 +312,7 @@ class ViewCommand(sublime_plugin.TextCommand):
     ```
     """
 
-    def run_(self, edit_token: int, args: dict[str, Any]) -> None:
+    def run_(self, edit_token: int, args: sublime.CommandArgs) -> None:
         args = self.filter_args(args)
         try:
             run_coroutine(self.run(**args) if args else self.run())
@@ -327,7 +327,7 @@ class ViewCommand(sublime_plugin.TextCommand):
                     return
             raise
 
-    async def run(self, *args, **kwargs) -> None:
+    async def run(self, **kwargs) -> None:
         """
         Called when the command is run. Command arguments are passed as keyword
         arguments.

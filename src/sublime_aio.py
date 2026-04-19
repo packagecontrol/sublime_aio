@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
-import atexit
+import io
+import os
+import sys
 import traceback
 from inspect import iscoroutinefunction
 from threading import Event, Lock, Thread
@@ -65,24 +67,51 @@ if _loop is None:
     _thread.start()
 
 
-@atexit.register
-def on_exit():
+def on_exit(log_path: str):
+    """Handle API shutdown uppon application exit
+
+    This custom `on_exit` handler overrides `sublime_plugin.on_exit`
+    to ensure to first let plugins handle exit event before closing
+    global asyncio event loop.
+
+    Note: Using python's `atexit.register()` does not work as related event
+    is not fired and thus eventloop cleanup would not be executed.
+    """
+
+    # on_exit() is called once the API it shutdown, which means that stdout
+    # will not be visible for debugging. Thus we write to a log file.
+    stdout = io.StringIO()
+    sys.stdout = stdout
+    sys.stderr = stdout
+
+    # execute on_exit event handlers
+    for callback in sublime_plugin.el_callbacks('on_exit'):
+        callback()
+
+    # shutdown asyncio event loop
     global _loop
-    if _loop is None or _thread is None:
-        return
+    if _loop is not None and _thread is not None:
+        loop = _loop
+        _loop = None
 
-    loop = _loop
-    _loop = None
+        def shutdown():
+            for task in asyncio.all_tasks(loop):
+                task.cancel()
+            loop.stop()
 
-    def shutdown():
-        for task in asyncio.all_tasks(loop):
-            task.cancel()
-        loop.stop()
+        loop.call_soon_threadsafe(shutdown)
+        _thread.join()
+        loop.run_until_complete(loop.shutdown_asyncgens())
+        loop.close()
 
-    loop.call_soon_threadsafe(shutdown)
-    _thread.join()
-    loop.run_until_complete(loop.shutdown_asyncgens())
-    loop.close()
+    # write stdout to provided logfile
+    if len(stdout.getvalue()):
+        with open(log_path, "w", encoding="utf-8") as f:
+            f.write(stdout.getvalue())
+    else:
+        os.unlink(log_path)
+
+sublime_plugin.on_exit = on_exit
 
 
 # ---- [ public ] -------------------------------------------------------------

@@ -4,7 +4,7 @@ import asyncio
 import atexit
 import traceback
 from inspect import iscoroutinefunction
-from threading import Lock, Thread
+from threading import Event, Lock, Thread
 from time import monotonic as now
 from typing import TYPE_CHECKING, overload
 
@@ -355,8 +355,25 @@ class AsyncEventListenerType(type):
         attrs: dict[str, object],
     ) -> AsyncEventListenerType:
         for attr_name, attr_value in attrs.items():
+            # wrap `async def on_exit()` in sync method of same name
+            if attr_name == "on_exit" and iscoroutinefunction(attr_value):
+                exit_coro: Callable[..., Coroutine[object, object, None]] = attr_value
+
+                def on_exit(*args: P.args, **kwargs: P.kwargs) -> None:
+                    done = Event()
+
+                    def on_done(_):
+                        nonlocal done
+                        done.set()
+
+                    future = run_coroutine(exit_coro(*args, **kwargs))
+                    future.add_done_callback(on_done)
+                    done.wait()
+
+                attrs[attr_name] = on_exit
+
             # wrap `async def on_query_completions()` in sync method of same name
-            if attr_name == "on_query_completions" and iscoroutinefunction(attr_value):
+            elif attr_name == "on_query_completions" and iscoroutinefunction(attr_value):
                 _task = None
                 completions_coro_func: Callable[
                     ..., Coroutine[object, object, CompletionsReturnVal]

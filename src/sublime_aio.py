@@ -67,6 +67,31 @@ if _loop is None:
     _thread.start()
 
 
+class ExitEvent:
+    """
+    A class counting in flight async exit handlers
+    """
+    _count = 0
+    _event = Event()
+    _lock = Lock()
+
+    @classmethod
+    def aquire(cls):
+        with cls._lock:
+            cls._count += 1
+
+    @classmethod
+    def release(cls):
+        with cls._lock:
+            cls._count -= 1
+            if cls._count == 0:
+                cls._event.set()
+
+    @classmethod
+    def wait(cls):
+        cls._event.wait()
+
+
 def on_exit(log_path: str):
     """Handle API shutdown uppon application exit
 
@@ -87,6 +112,8 @@ def on_exit(log_path: str):
     # execute on_exit event handlers
     for callback in sublime_plugin.el_callbacks('on_exit'):
         callback()
+
+    ExitEvent.wait()
 
     # shutdown asyncio event loop
     global _loop
@@ -389,15 +416,8 @@ class AsyncEventListenerType(type):
                 exit_coro: Callable[..., Coroutine[object, object, None]] = attr_value
 
                 def on_exit(*args: P.args, **kwargs: P.kwargs) -> None:
-                    done = Event()
-
-                    def on_done(_):
-                        nonlocal done
-                        done.set()
-
-                    future = run_coroutine(exit_coro(*args, **kwargs))
-                    future.add_done_callback(on_done)
-                    done.wait()
+                    ExitEvent.aquire()
+                    run_coroutine(exit_coro(*args, **kwargs)).add_done_callback(lambda _: ExitEvent.release())
 
                 attrs[attr_name] = on_exit
 

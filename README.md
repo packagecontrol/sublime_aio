@@ -224,6 +224,21 @@ def plugin_loaded():
 ```
 
 
+## Run function in event loop
+
+Use `sublime_aio.call_soon_threadsafe()` to schedule a function for execution in event loop from synchronous code.
+
+```py
+import sublime_aio
+
+def any_func(arg1, arg2):
+    print(f"{arg1} {arg2}!")
+
+def plugin_loaded()
+    sublime_aio.call_soon_threadsafe(any_func, "Hello", "World")
+```
+
+
 ## Window
 
 The library provides a `Window` class based on `sublime.Window`

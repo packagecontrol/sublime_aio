@@ -17,6 +17,7 @@ import sublime_plugin
 if TYPE_CHECKING:
     from collections.abc import Coroutine
     from concurrent.futures import Future
+    from contextvars import Context
     from typing import Any, Callable, List, Tuple, TypeVar, Union
 
     from typing_extensions import ParamSpec, TypeAlias
@@ -273,6 +274,41 @@ def run_coroutine(coro: Coroutine[object, object, T]) -> Future[T]:
         raise RuntimeError("No event loop running!")
 
     return asyncio.run_coroutine_threadsafe(coro, loop=_loop)
+
+
+def call_soon_threadsafe(
+    callback: Callable[[], None],
+    *args: Any,
+    context: Context | None=None
+) -> asyncio.Handle:
+    """
+    Call specified `callback` function in event loop.
+
+    Example:
+
+    ```py
+    import sublime_aio
+
+    def callback(arg1, arg2):
+        ...
+
+    def sync_func(arg1, arg2):
+        sublime_aio.call_soon_threadsafe(callback, arg1, arg2)
+    ```
+
+    :param callback:
+        The function to call
+
+    :param args:
+        The arguments to pass to the callback function.
+
+    :returns:
+        An `asyncio.ThreadSafeHandle` object
+    """
+    if _loop is None:
+        raise RuntimeError("No event loop running!")
+
+    return _loop.call_soon_threadsafe(callback, *args, context=context)
 
 
 def active_window() -> Window:

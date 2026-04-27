@@ -91,7 +91,10 @@ class ExitEvent:
 
     @classmethod
     def wait(cls):
-        cls._event.wait()
+        with cls._lock:
+            if cls._count == 0:
+                return
+        cls._event.wait(20.0)
 
 
 def on_exit(log_path: str):

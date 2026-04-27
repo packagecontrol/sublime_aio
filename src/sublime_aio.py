@@ -5,6 +5,7 @@ import io
 import os
 import sys
 import traceback
+from abc import ABCMeta
 from inspect import iscoroutinefunction
 from threading import Event, Lock, Thread
 from time import monotonic as now
@@ -427,7 +428,7 @@ class ViewCommand(sublime_plugin.TextCommand):
         raise NotImplementedError
 
 
-class AsyncEventListenerType(type):
+class AsyncEventListenerType(ABCMeta):
     """
     This class describes an asynchronous event listener meta class.
 
@@ -558,7 +559,7 @@ class ViewEventListener(sublime_plugin.ViewEventListener, metaclass=AsyncEventLi
     pass
 
 
-class AsyncTextChangeListenerType(type):
+class AsyncTextChangeListenerType(ABCMeta):
     """
     This class describes an asynchronous text change listener meta class.
 

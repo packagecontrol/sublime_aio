@@ -47,6 +47,22 @@ class CompletionListener(sublime_aio.ViewEventListener):
         print(f"Selection of {self.view!r} got modified on io loop!")
 ```
 
+> [!WARNING]
+>
+> To provide a transparent as native as possible experience, 
+> all event handler coroutines are wrapped into synchronous methods
+> of same name for ST to be able to hook them.
+> 
+> As a result those coroutines can't be awaited from other coroutines,
+> once a Listener is instantiated.
+> 
+> Do **not** call those synchronous handler methods instead,
+> as it breaks the coroutine chain poking around between threads,
+> which may cause all sorts of issues and overheads!!!
+> 
+> All ST `on_...` event handler coroutines are pure end points,
+> not designed to be re-used by plugin code!
+
 
 ## Text Change Listener
 

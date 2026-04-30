@@ -523,9 +523,16 @@ class AsyncEventListenerType(ABCMeta):
                     raise ValueError(
                         'Invalid event handler name! Coroutines must not end with "_async"!'
                     )
-                coro_func: Callable[..., Coroutine[object, object, None]] = attr_value
 
-                def on_event(*args: P.args, **kwargs: P.kwargs) -> None:
+                # note: `coro_func` must be part of on_event() signature to
+                #       create unique function object as otherwise all events
+                #       call last `on_...` coroutine defined by listener.
+                #       Handler is not called, when using `partial()`!
+                def on_event(
+                    *args: P.args,
+                    coro_func: Callable[..., Coroutine[object, object, None]] = attr_value,  # pyright: ignore
+                    **kwargs: P.kwargs,
+                ) -> None:
                     call_coroutine(coro_func(*args, **kwargs))
 
                 attrs[attr_name] = on_event
@@ -606,13 +613,9 @@ class AsyncTextChangeListenerType(ABCMeta):
                 #       create unique function object as otherwise all events
                 #       call last `on_...` coroutine defined by listener.
                 #       Handler is not called, when using `partial()`!
-                #       It's actually unclear, why it is working without in
-                #       `AsyncEventListenerType`.
                 def on_event(
                     *args: P.args,
-                    coro_func: Callable[
-                        ..., Coroutine[object, object, None]
-                    ] = attr_value,  # pyright: ignore
+                    coro_func: Callable[..., Coroutine[object, object, None]] = attr_value,  # pyright: ignore
                     **kwargs: P.kwargs,
                 ) -> None:
                     call_coroutine(coro_func(*args, **kwargs))

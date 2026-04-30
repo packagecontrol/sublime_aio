@@ -215,6 +215,9 @@ Use `sublime_aio.run_coroutine()` to call a coroutine from synchronous code.
 It will be executed on event loop's background thread.
 
 ```py
+import asyncio
+import traceback
+
 import sublime_aio
 
 async def init1():
@@ -223,7 +226,7 @@ async def init1():
 
 async def init2():
     await asyncio.sleep(1.0)
-    print("Init Task 2 done!")
+    raise Exception("Init Task 2 failed!")
 
 async def init_plugin():
     print("Initializing plugin...")
@@ -233,7 +236,11 @@ async def init_plugin():
 
 def plugin_loaded():
     def on_done(fut):
-        print("All up and running!")
+        exc = fut.exception()
+        if exc is not None:
+            traceback.print_exception(exc)
+        else:
+            print("All up and running!")
 
     # Initialize plugin on asyncio event loop
     sublime_aio.run_coroutine(init_plugin()).add_done_callback(on_done)

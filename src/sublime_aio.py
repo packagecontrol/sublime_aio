@@ -42,6 +42,7 @@ __all__ = [
     "__version__",
     "active_window",
     "ApplicationCommand",
+    "call_coroutine",
     "call_soon_threadsafe",
     "debounced",
     "EventListener",
@@ -281,6 +282,19 @@ def run_coroutine(coro: Coroutine[object, object, T]) -> Future[T]:
     return asyncio.run_coroutine_threadsafe(coro, loop=_loop)
 
 
+def call_coroutine(coro: Coroutine[object, object, None]) -> None:
+    """
+    Run coroutine from synchronous code without creating future object.
+
+    A lightweight fire and forget variant to invoke coroutines.
+    """
+    def callback(coro: Coroutine[object, object, None]):
+        if _loop is not None:
+            _loop.create_task(coro)
+
+    call_soon_threadsafe(callback, coro)
+
+
 def call_soon_threadsafe(
     callback: Callable[[], None],
     *args: Any,
@@ -338,7 +352,7 @@ class ApplicationCommand(sublime_plugin.ApplicationCommand):
     def run_(self, edit_token: int, args: sublime.CommandArgs) -> None:
         args = self.filter_args(args)
         try:
-            run_coroutine(self.run(**args) if args else self.run())
+            call_coroutine(self.run(**args) if args else self.run())
         except TypeError as e:
             if "required positional argument" in str(e):
                 if sublime_api.can_accept_input(self.name(), args):
@@ -372,7 +386,7 @@ class WindowCommand(sublime_plugin.WindowCommand):
     def run_(self, edit_token: int, args: sublime.CommandArgs) -> None:
         args = self.filter_args(args)
         try:
-            run_coroutine(self.run(**args) if args else self.run())
+            call_coroutine(self.run(**args) if args else self.run())
         except TypeError as e:
             if "required positional argument" in str(e):
                 if sublime_api.window_can_accept_input(self.window.id(), self.name(), args):
@@ -412,7 +426,7 @@ class ViewCommand(sublime_plugin.TextCommand):
     def run_(self, edit_token: int, args: sublime.CommandArgs) -> None:
         args = self.filter_args(args)
         try:
-            run_coroutine(self.run(**args) if args else self.run())
+            call_coroutine(self.run(**args) if args else self.run())
         except TypeError as e:
             if "required positional argument" in str(e):
                 if sublime_api.view_can_accept_input(self.view.id(), self.name(), args):
@@ -512,7 +526,7 @@ class AsyncEventListenerType(ABCMeta):
                 coro_func: Callable[..., Coroutine[object, object, None]] = attr_value
 
                 def on_event(*args: P.args, **kwargs: P.kwargs) -> None:
-                    run_coroutine(coro_func(*args, **kwargs))
+                    call_coroutine(coro_func(*args, **kwargs))
 
                 attrs[attr_name] = on_event
 
@@ -601,7 +615,7 @@ class AsyncTextChangeListenerType(ABCMeta):
                     ] = attr_value,  # pyright: ignore
                     **kwargs: P.kwargs,
                 ) -> None:
-                    run_coroutine(coro_func(*args, **kwargs))
+                    call_coroutine(coro_func(*args, **kwargs))
 
                 attrs[attr_name] = on_event
 
@@ -784,7 +798,7 @@ class Window(sublime.Window):
 
         def change(text: str) -> None:
             if view is not None:
-                run_coroutine(on_change(view, text))
+                call_coroutine(on_change(view, text))
 
         view = super().show_input_panel(
             caption=caption,
@@ -807,7 +821,7 @@ class Window(sublime.Window):
         fut = asyncio.Future()
 
         def highlight(index):
-            run_coroutine(on_highlight(index))
+            call_coroutine(on_highlight(index))
 
         def select(index):
             if _loop:

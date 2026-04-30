@@ -446,6 +446,31 @@ class ViewCommand(sublime_plugin.TextCommand):
         raise NotImplementedError
 
 
+class CoroutineAdapter:
+    """
+    This class describes an asyncio coroutine method adapter.
+
+    It wraps a coroutine function to catch exceptions and print tracebacks,
+    and enables invokation from synchronous code.
+    """
+    __slots__ = ("coro_func",)
+
+    @property
+    def __name__(self):
+        return self.coro_func.__name__
+
+    def __init__(self, coro_func: Callable[..., Coroutine[object, object, None]]):
+        self.coro_func = coro_func
+
+    def __call__(self, *args, **kwargs):
+        if _loop is not None:
+            _loop.call_soon_threadsafe(self.callback, *args, **kwargs)
+
+    def callback(self, *args, **kwargs):
+        if _loop is not None:
+            _loop.create_task(self.coro_func(*args, **kwargs))
+
+
 class AsyncEventListenerType(ABCMeta):
     """
     This class describes an asynchronous event listener meta class.
@@ -523,19 +548,7 @@ class AsyncEventListenerType(ABCMeta):
                     raise ValueError(
                         'Invalid event handler name! Coroutines must not end with "_async"!'
                     )
-
-                # note: `coro_func` must be part of on_event() signature to
-                #       create unique function object as otherwise all events
-                #       call last `on_...` coroutine defined by listener.
-                #       Handler is not called, when using `partial()`!
-                def on_event(
-                    *args: P.args,
-                    coro_func: Callable[..., Coroutine[object, object, None]] = attr_value,  # pyright: ignore
-                    **kwargs: P.kwargs,
-                ) -> None:
-                    call_coroutine(coro_func(*args, **kwargs))
-
-                attrs[attr_name] = on_event
+                attrs[attr_name] = CoroutineAdapter(attr_value)
 
         return super().__new__(mcs, name, bases, attrs)
 
@@ -608,19 +621,7 @@ class AsyncTextChangeListenerType(ABCMeta):
                     raise ValueError(
                         'Invalid event handler name! Coroutines must not end with "_async"!'
                     )
-
-                # note: `coro_func` must be part of on_event() signature to
-                #       create unique function object as otherwise all events
-                #       call last `on_...` coroutine defined by listener.
-                #       Handler is not called, when using `partial()`!
-                def on_event(
-                    *args: P.args,
-                    coro_func: Callable[..., Coroutine[object, object, None]] = attr_value,  # pyright: ignore
-                    **kwargs: P.kwargs,
-                ) -> None:
-                    call_coroutine(coro_func(*args, **kwargs))
-
-                attrs[attr_name] = on_event
+                attrs[attr_name] = CoroutineAdapter(attr_value)
 
         return super().__new__(mcs, name, bases, attrs)
 

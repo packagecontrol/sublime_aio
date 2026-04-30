@@ -42,6 +42,7 @@ __all__ = [
     "__version__",
     "active_window",
     "ApplicationCommand",
+    "call_soon_threadsafe",
     "debounced",
     "EventListener",
     "InputCancelledError",

@@ -350,6 +350,43 @@ def call_soon_threadsafe(
     return _loop.call_soon_threadsafe(callback, *args, context=context)
 
 
+def run_in_worker(func: Callable[..., T], *args: Any) -> asyncio.Future[T]:
+    """
+    Call specified `func` function in one of default executors worker threads.
+
+    Example:
+
+    ```py
+    import sublime_aio
+
+    def func(arg1, arg2):
+        ...
+
+    async def any_coro(arg1, arg2):
+        future = await sublime_aio.run_in_worker(func, arg1, arg2)
+    ```
+
+    This convenience function is used to execute CPU bound tasks in one of
+    default executors worker threads.
+
+    It is equivalent to calling
+    `asyncio.get_running_loop().run_in_executor(executor=None, func=func, ...)`
+
+    :param func:
+        The function to call
+
+    :param args:
+        The arguments to pass to the callback function.
+
+    :returns:
+        An `asyncio.Future` object
+    """
+    if _loop is None:
+        raise RuntimeError("No event loop running!")
+
+    return _loop.run_in_executor(executor=None, func=func, *args)
+
+
 def active_window() -> Window:
     """
     :returns: The most recently used `Window`.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent
 import io
 import os
 import sys
@@ -66,8 +67,10 @@ _thread: Thread | None = None
 
 if _loop is None:
     _loop = asyncio.new_event_loop()
-    _thread = Thread(target=_loop.run_forever)
-    _thread.daemon = True
+    _loop.set_default_executor(
+        concurrent.futures.ThreadPoolExecutor(thread_name_prefix="sublime_aio.worker")
+    )
+    _thread = Thread(target=_loop.run_forever, name="sublime_aio", daemon=True)
     _thread.start()
 
 

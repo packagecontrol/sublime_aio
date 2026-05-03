@@ -262,6 +262,28 @@ def plugin_loaded()
 ```
 
 
+## Run function in worker thread
+
+Use `sublime_aio.run_in_worker()` 
+to a run a synchronous function in one of the default worker threads
+and await the result via returned `asyncio.Future` object.
+
+```py
+import sublime_aio
+
+def any_func(arg1, arg2):
+    print(f"{arg1} {arg2}!")
+
+async def async_func()
+    result = await sublime_aio.run_in_worker(any_func, "Hello", "World")
+```
+
+> [!TIP]
+>
+> It is equivalent to calling 
+> `asyncio.get_running_loop().run_in_executor(executor=None, func=any_func, "Hello", "World")`
+
+
 ## Window
 
 The library provides a `Window` class based on `sublime.Window`

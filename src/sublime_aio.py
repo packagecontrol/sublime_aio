@@ -18,7 +18,6 @@ import sublime_plugin
 
 if TYPE_CHECKING:
     from collections.abc import Coroutine
-    from concurrent.futures import Future
     from contextvars import Context
     from typing import Any, Callable, List, Tuple, TypeVar, Union
 
@@ -252,7 +251,7 @@ def debounced(delay_in_ms: int):
     return decorator
 
 
-def run_coroutine(coro: Coroutine[object, object, T]) -> Future[T]:
+def run_coroutine(coro: Coroutine[object, object, T]) -> concurrent.futures.Future[T]:
     """
     Run coroutine from synchronous code.
 
@@ -277,7 +276,7 @@ def run_coroutine(coro: Coroutine[object, object, T]) -> Future[T]:
         The coroutine object to run
 
     :returns:
-        An `concurrent.Future` object
+        An `concurrent.futures.Future` object
     """
     if _loop is None:
         raise RuntimeError("No event loop running!")

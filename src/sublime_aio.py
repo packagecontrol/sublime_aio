@@ -284,21 +284,39 @@ def run_coroutine(coro: Coroutine[object, object, T]) -> concurrent.futures.Futu
     return asyncio.run_coroutine_threadsafe(coro, loop=_loop)
 
 
-def call_coroutine(coro: Coroutine[object, object, None]) -> None:
+def call_coroutine(coro: Coroutine[object, object, None]) -> asyncio.Handle:
     """
     Run coroutine from synchronous code without creating future object.
 
     A lightweight fire and forget variant to invoke coroutines.
+
+    Example:
+
+    ```py
+    import sublime_aio
+
+    async def an_async_func(arg1, arg2):
+        ...
+
+    def sync_func(arg1, arg2):
+        sublime_aio.call_coroutine(an_async_func(arg1, arg2))
+    ```
+
+    :param coro:
+        The coroutine object to run
+
+    :returns:
+        An `asyncio.ThreadSafeHandle` object
     """
-    def callback(coro: Coroutine[object, object, None]):
+    def callback(coro: Coroutine[object, object, None]) -> None:
         if _loop is not None:
             _loop.create_task(coro)
 
-    call_soon_threadsafe(callback, coro)
+    return call_soon_threadsafe(callback, coro)
 
 
 def call_soon_threadsafe(
-    callback: Callable[[], None],
+    callback: Callable[..., None],
     *args: Any,
     context: Context | None=None
 ) -> asyncio.Handle:

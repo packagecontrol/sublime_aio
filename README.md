@@ -331,7 +331,7 @@ def sync_func(arg1, arg2):
 
 > [!NOTE]
 >
-> The caller is responsible to evaluate the results
+> The caller is responsible for evaluating the result,
 > including any exception raised during execution.
 
 
@@ -390,7 +390,7 @@ def plugin_loaded()
 > This function exists to help migrating to asyncio compliant implementation.
 >
 > Exclusively use `async` and `await` in final implementation.
-> 
+>
 > Scheduling synchronous functions this way
 > was how legacy python 3.3 used to think of async code.
 >

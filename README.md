@@ -361,6 +361,7 @@ def sync_func(arg1, arg2):
 >
 > Traceback of uncaught exceptions is printed to console.
 
+
 ### Call functions in event loop
 
 Use `sublime_aio.call_soon_threadsafe()`
@@ -383,11 +384,15 @@ def plugin_loaded()
 > [!NOTE]
 >
 > Traceback of uncaught exceptions is printed to console.
+
+> [!WARNING]
 >
 > This function exists to help migrating to asyncio compliant implementation.
 >
-> Do not run synchronous function this way
-> as this is how legacy python 3.3 used to think of async code.
+> Exclusively use `async` and `await` in final implementation.
+> 
+> Scheduling synchronous functions this way
+> was how legacy python 3.3 used to think of async code.
 >
 > This is no longer best practice in modern python.
 

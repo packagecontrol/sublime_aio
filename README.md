@@ -208,82 +208,6 @@ Corresponding _Default.sublime-commands_
 ```
 
 
-## Run coroutines from synchonous code
-
-Use `sublime_aio.run_coroutine()` to call a coroutine from synchronous code.
-
-It will be executed on event loop's background thread.
-
-```py
-import asyncio
-import traceback
-
-import sublime_aio
-
-async def init1():
-    await asyncio.sleep(1.5)
-    print("Init Task 1 done!")
-
-async def init2():
-    await asyncio.sleep(1.0)
-    raise Exception("Init Task 2 failed!")
-
-async def init_plugin():
-    print("Initializing plugin...")
-    task1 = asyncio.create_task(init1())
-    task2 = asyncio.create_task(init2())
-    await asyncio.gather(task1, task2)
-
-def plugin_loaded():
-    def on_done(fut):
-        exc = fut.exception()
-        if exc is not None:
-            traceback.print_exception(exc)
-        else:
-            print("All up and running!")
-
-    # Initialize plugin on asyncio event loop
-    sublime_aio.run_coroutine(init_plugin()).add_done_callback(on_done)
-```
-
-
-## Run function in event loop
-
-Use `sublime_aio.call_soon_threadsafe()` to schedule a function for execution in event loop from synchronous code.
-
-```py
-import sublime_aio
-
-def any_func(arg1, arg2):
-    print(f"{arg1} {arg2}!")
-
-def plugin_loaded()
-    sublime_aio.call_soon_threadsafe(any_func, "Hello", "World")
-```
-
-
-## Run function in worker thread
-
-Use `sublime_aio.run_in_worker()` 
-to a run a synchronous function in one of the default worker threads
-and await the result via returned `asyncio.Future` object.
-
-```py
-import sublime_aio
-
-def any_func(arg1, arg2):
-    print(f"{arg1} {arg2}!")
-
-async def async_func()
-    result = await sublime_aio.run_in_worker(any_func, "Hello", "World")
-```
-
-> [!TIP]
->
-> It is equivalent to calling 
-> `asyncio.get_running_loop().run_in_executor(executor=None, func=any_func, "Hello", "World")`
-
-
 ## Window
 
 The library provides a `Window` class based on `sublime.Window`
@@ -361,3 +285,139 @@ class AsyncQuickPanelCommand(sublime_aio.WindowCommand):
         """Optional item selection changed event handler"""
         print("selected", index)
 ```
+
+
+## Bridging between synchronous and asynchronous code
+
+> [!NOTE]
+>
+> The functions in this section are primarily intended
+> to cross-communicate between threads and synchronous
+> and asynchronous code and thus do some extra work
+> to ensure thread safety.
+>
+> Do not use them to invoke coroutines from within
+> coroutines, especially not in same event loop!
+
+### Run coroutines in event loop
+
+Use `sublime_aio.run_coroutine()`
+to schedule a coroutine for execution in event loop
+from synchronous code in thread safe manner
+and return a `concurrent.futures.Future` object,
+holding execution results,
+once coroutine is finished.
+
+Example:
+
+```py
+import sublime_aio
+
+async def async_func(arg1, arg2):
+    return "Hello World"
+
+def sync_func(arg1, arg2):
+
+    def on_done(fut):
+        exc = fut.exception()
+        if exc is not None:
+            traceback.print_exception(exc)
+        else:
+            print(fut.result())
+
+    future = sublime_aio.run_coroutine(async_func(arg1, arg2))
+    future.add_done_callback(on_done)
+```
+
+> [!NOTE]
+>
+> The caller is responsible to evaluate the results
+> including any exception raised during execution.
+
+
+### Call coroutines in event loop
+
+Use `sublime_aio.call_coroutine()`
+to schedule a coroutine for execution in event loop
+from synchronous code in thread safe manner
+without creating future object.
+
+_A lightweight fire and forget variant to invoke coroutines,
+the result of which is not of any interest._
+
+Example:
+
+```py
+import sublime_aio
+
+async def async_func(arg1, arg2):
+    print("Hello World")
+
+def sync_func(arg1, arg2):
+    sublime_aio.call_coroutine(async_func(arg1, arg2))
+```
+
+> [!NOTE]
+>
+> Traceback of uncaught exceptions is printed to console.
+
+### Call functions in event loop
+
+Use `sublime_aio.call_soon_threadsafe()`
+to schedule a function for execution in event loop
+from synchronous code in thread safe manner
+without creating future object.
+
+Example:
+
+```py
+import sublime_aio
+
+def any_func(arg1, arg2):
+    print(f"{arg1} {arg2}!")
+
+def plugin_loaded()
+    sublime_aio.call_soon_threadsafe(any_func, "Hello", "World")
+```
+
+> [!NOTE]
+>
+> Traceback of uncaught exceptions is printed to console.
+>
+> This function exists to help migrating to asyncio compliant implementation.
+>
+> Do not run synchronous function this way
+> as this is how legacy python 3.3 used to think of async code.
+>
+> This is no longer best practice in modern python.
+
+
+### Run CPU bound functions in worker threads
+
+The main event loop should primarily be used
+to execute cheap and short running functions
+to ensure low latency of concurrent tasks.
+Expensive CPU bound functions or blocking API calls
+should be outsourced to one of the default worker threads.
+
+Use `sublime_aio.run_in_worker()`
+to a run a synchronous function in one of the default worker threads
+and await the result via returned `asyncio.Future` object.
+
+Example:
+
+```py
+import os
+import sublime_aio
+
+def blocking_func(arg1):
+    return os.listdir(arg1)
+
+async def async_func()
+    result = await sublime_aio.run_in_worker(blocking_func, "~/Documents")
+```
+
+> [!TIP]
+>
+> It is equivalent to calling
+> `asyncio.get_running_loop().run_in_executor(executor=None, func=blocking_func, "~/Documents")`

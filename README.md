@@ -11,10 +11,10 @@ in a dedicated background thread, which runs forever
 and is shared across plugins.
 
 Commands and event handlers are dispatched asynchronously,
-causing no messurable delay on UI thread.
+causing no measurable delay on UI thread.
 
 > [!NOTE]
-> 
+>
 >  ST's asynchronous event handler methods (e.g. `on_modified_async`)
 >  are not supported as task scheduling in UI thread is faster.
 
@@ -22,7 +22,7 @@ causing no messurable delay on UI thread.
 ## Event Listener
 
 This package demonstrates power of asyncio and [simdjson](https://pypi.org/project/pysimdjson/)
-to handle hundrets of thousands of completions smoothly,
+to handle hundreds of thousands of completions smoothly,
 without blocking Sublime Text's UI in any way.
 
 Both, `EventListener` and `ViewEventListener` are supported.
@@ -49,17 +49,17 @@ class CompletionListener(sublime_aio.ViewEventListener):
 
 > [!WARNING]
 >
-> To provide a transparent as native as possible experience, 
+> To provide a transparent as native as possible experience,
 > all event handler coroutines are wrapped into synchronous methods
 > of same name for ST to be able to hook them.
-> 
+>
 > As a result those coroutines can't be awaited from other coroutines,
 > once a Listener is instantiated.
-> 
+>
 > Do **not** call those synchronous handler methods instead,
 > as it breaks the coroutine chain poking around between threads,
 > which may cause all sorts of issues and overheads!!!
-> 
+>
 > All ST `on_...` event handler coroutines are pure end points,
 > not designed to be re-used by plugin code!
 
@@ -84,7 +84,7 @@ class TextChangeListener(sublime_aio.TextChangeListener):
 
 ## Application Commands
 
-Replace `sublime_plugin.ApplicationCommand` by `sublime_aio.ApplicationCommand` 
+Replace `sublime_plugin.ApplicationCommand` by `sublime_aio.ApplicationCommand`
 to implement commands running asynchronously on global event loop.
 
 ```py
@@ -165,11 +165,11 @@ Corresponding _Default.sublime-commands_
 Due to asynchronous command execution and current ST API restrictions,
 `sublime_aio` can't provide an asynchronous `TextCommand`.
 
-The `edit` token required for text manipulation is only valid 
+The `edit` token required for text manipulation is only valid
 during synchronous command execution.
 
 Instead a `sublime_aio.ViewCommand` is provided
-to implement view-specific commands 
+to implement view-specific commands
 which do not directly alter content.
 
 ```py
@@ -287,13 +287,13 @@ async def async_func()
 ## Window
 
 The library provides a `Window` class based on `sublime.Window`
-to provide some asyncio complient methods.
+to provide some asyncio compliant methods.
 
 Note: Most of ST's API functions are fast enough to not need to be coroutines!
 
 ```py
 class Window(sublime.Window):
-    
+
     async def show_input_panel(
         self,
         caption: str,
@@ -316,10 +316,10 @@ class Window(sublime.Window):
 
 ### Using Input Panels
 
-To await input of input panels within asyncio complient commands,
+To await input of input panels within asyncio compliant commands,
 use `await sublime_aio.Window.show_input_panel()`.
 
-The coroutine returns selected index or raises `InputCancelledError`, 
+The coroutine returns selected index or raises `InputCancelledError`,
 if it was closed via <kbd>escape</kbd>`.
 
 ```py
@@ -342,10 +342,10 @@ class AsyncInputCommand(sublime_aio.WindowCommand):
 
 ### Using Quick Panels
 
-To await selected quick panel items within asyncio complient commands,
+To await selected quick panel items within asyncio compliant commands,
 use `await sublime_aio.Window.show_quick_panel()`.
 
-The coroutine returns selected index or raises `InputCancelledError`, 
+The coroutine returns selected index or raises `InputCancelledError`,
 if it was closed via <kbd>escape</kbd>`.
 
 ```py

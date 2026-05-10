@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-import concurrent
+import concurrent.futures
 import io
 import os
 import sys

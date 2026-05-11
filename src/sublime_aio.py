@@ -62,6 +62,7 @@ __version__ = "0.2.0"
 # ---- [ internal ] -----------------------------------------------------------
 
 _loop: asyncio.AbstractEventLoop | None = None
+_tasks = set()
 _thread: Thread | None = None
 
 if _loop is None:
@@ -309,8 +310,13 @@ def call_coroutine(coro: Coroutine[object, object, None]) -> asyncio.Handle:
         An `asyncio.ThreadSafeHandle` object
     """
     def callback(coro: Coroutine[object, object, None]) -> None:
-        if _loop is not None:
-            _loop.create_task(coro)
+        if _loop is None:
+            coro.close()
+            return
+
+        task = _loop.create_task(coro)
+        _tasks.add(task)
+        task.add_done_callback(lambda _: _tasks.discard(task))
 
     return call_soon_threadsafe(callback, coro)
 
@@ -525,8 +531,9 @@ class CoroutineAdapter:
 
     def callback(self, *args, **kwargs):
         if _loop is not None:
-            _loop.create_task(self.coro_func(*args, **kwargs))
-
+            task = _loop.create_task(self.coro_func(*args, **kwargs))
+            _tasks.add(task)
+            task.add_done_callback(lambda _: _tasks.discard(task))
 
 class AsyncEventListenerType(ABCMeta):
     """

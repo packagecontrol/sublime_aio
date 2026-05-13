@@ -536,6 +536,7 @@ class CoroutineAdapter:
             _tasks.add(task)
             task.add_done_callback(lambda _: _tasks.discard(task))
 
+
 class AsyncEventListenerType(ABCMeta):
     """
     This class describes an asynchronous event listener meta class.

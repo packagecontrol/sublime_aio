@@ -19,12 +19,13 @@ import sublime_plugin
 if TYPE_CHECKING:
     from collections.abc import Coroutine
     from contextvars import Context
-    from typing import Any, Callable, List, Tuple, TypeVar, Union
+    from typing import Callable, List, Tuple, TypeVar, Union
 
-    from typing_extensions import ParamSpec, TypeAlias
+    from typing_extensions import ParamSpec, TypeAlias, TypeVarTuple, Unpack
 
     P = ParamSpec("P")
     T = TypeVar("T")
+    Ts = TypeVarTuple("Ts")
 
     BlankCoro: TypeAlias = Coroutine[object, None, None]
     CompletionsReturnVal: TypeAlias = Union[
@@ -285,7 +286,7 @@ def run_coroutine(coro: Coroutine[object, object, T]) -> concurrent.futures.Futu
     return asyncio.run_coroutine_threadsafe(coro, loop=_loop)
 
 
-def call_coroutine(coro: Coroutine[object, object, None]) -> asyncio.Handle:
+def call_coroutine(coro: Coroutine[object, object, object]) -> asyncio.Handle:
     """
     Run coroutine from synchronous code without creating future object.
 
@@ -309,7 +310,7 @@ def call_coroutine(coro: Coroutine[object, object, None]) -> asyncio.Handle:
     :returns:
         An `asyncio.ThreadSafeHandle` object
     """
-    def callback(coro: Coroutine[object, object, None]) -> None:
+    def callback(coro: Coroutine[object, object, object]) -> None:
         if _loop is None:
             coro.close()
             return
@@ -322,8 +323,8 @@ def call_coroutine(coro: Coroutine[object, object, None]) -> asyncio.Handle:
 
 
 def call_soon_threadsafe(
-    callback: Callable[..., None],
-    *args: Any,
+    callback: Callable[[Unpack[Ts]], object],
+    *args: Unpack[Ts],
     context: Context | None=None
 ) -> asyncio.Handle:
     """
@@ -356,7 +357,7 @@ def call_soon_threadsafe(
     return _loop.call_soon_threadsafe(callback, *args, context=context)
 
 
-def run_in_worker(func: Callable[..., T], *args: Any) -> asyncio.Future[T]:
+def run_in_worker(func: Callable[[Unpack[Ts]], T], *args: Unpack[Ts]) -> asyncio.Future[T]:
     """
     Call specified `func` function in one of default executors worker threads.
 
@@ -522,7 +523,7 @@ class CoroutineAdapter:
     def __name__(self):
         return self.coro_func.__name__
 
-    def __init__(self, coro_func: Callable[..., Coroutine[object, object, None]]):
+    def __init__(self, coro_func):
         self.coro_func = coro_func
 
     def __call__(self, *args, **kwargs):

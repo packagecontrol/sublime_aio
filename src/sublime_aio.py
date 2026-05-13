@@ -62,6 +62,7 @@ __version__ = "0.2.0"
 # ---- [ internal ] -----------------------------------------------------------
 
 _loop: asyncio.AbstractEventLoop | None = None
+_tasks = set()
 _thread: Thread | None = None
 
 if _loop is None:
@@ -309,8 +310,13 @@ def call_coroutine(coro: Coroutine[object, object, None]) -> asyncio.Handle:
         An `asyncio.ThreadSafeHandle` object
     """
     def callback(coro: Coroutine[object, object, None]) -> None:
-        if _loop is not None:
-            _loop.create_task(coro)
+        if _loop is None:
+            coro.close()
+            return
+
+        task = _loop.create_task(coro)
+        _tasks.add(task)
+        task.add_done_callback(lambda _: _tasks.discard(task))
 
     return call_soon_threadsafe(callback, coro)
 
@@ -525,8 +531,9 @@ class CoroutineAdapter:
 
     def callback(self, *args, **kwargs):
         if _loop is not None:
-            _loop.create_task(self.coro_func(*args, **kwargs))
-
+            task = _loop.create_task(self.coro_func(*args, **kwargs))
+            _tasks.add(task)
+            task.add_done_callback(lambda _: _tasks.discard(task))
 
 class AsyncEventListenerType(ABCMeta):
     """
@@ -550,17 +557,20 @@ class AsyncEventListenerType(ABCMeta):
         for attr_name, attr_value in attrs.items():
             # wrap `async def on_exit()` in sync method of same name
             if attr_name == "on_exit" and iscoroutinefunction(attr_value):
+                future = None
                 exit_coro: Callable[..., Coroutine[object, object, None]] = attr_value
 
                 def on_exit(*args: P.args, **kwargs: P.kwargs) -> None:
+                    nonlocal future
                     ExitEvent.aquire()
-                    run_coroutine(exit_coro(*args, **kwargs)).add_done_callback(lambda _: ExitEvent.release())
+                    future = run_coroutine(exit_coro(*args, **kwargs))
+                    future.add_done_callback(lambda _: ExitEvent.release())
 
                 attrs[attr_name] = on_exit
 
             # wrap `async def on_query_completions()` in sync method of same name
             elif attr_name == "on_query_completions" and iscoroutinefunction(attr_value):
-                _task = None
+                future = None
                 completions_coro_func: Callable[
                     ..., Coroutine[object, object, CompletionsReturnVal]
                 ] = attr_value
@@ -586,13 +596,13 @@ class AsyncEventListenerType(ABCMeta):
                 def on_query_completions(
                     *args: P.args, **kwargs: P.kwargs
                 ) -> sublime.CompletionList:
-                    nonlocal _task
+                    nonlocal future
 
-                    if _task:
-                        _task.cancel()
+                    if future:
+                        future.cancel()
 
                     clist = sublime.CompletionList()
-                    _task = run_coroutine(
+                    future = run_coroutine(
                         query_completions(clist, completions_coro_func(*args, **kwargs))
                     )
                     return clist

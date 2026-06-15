@@ -572,7 +572,6 @@ class AsyncEventListenerType(ABCMeta):
 
             # wrap `async def on_query_completions()` in sync method of same name
             elif attr_name == "on_query_completions" and iscoroutinefunction(attr_value):
-                future = None
                 task = None
                 completions_coro_func: Callable[
                     ..., Coroutine[object, object, CompletionsReturnVal]
@@ -605,9 +604,7 @@ class AsyncEventListenerType(ABCMeta):
                     *args: P.args, **kwargs: P.kwargs
                 ) -> sublime.CompletionList:
                     clist = sublime.CompletionList()
-                    future = run_coroutine(
-                        query_completions(clist, completions_coro_func(*args, **kwargs))
-                    )
+                    call_coroutine(query_completions(clist, completions_coro_func(*args, **kwargs)))
                     return clist
 
                 attrs[attr_name] = on_query_completions

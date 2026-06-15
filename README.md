@@ -64,6 +64,30 @@ class CompletionListener(sublime_aio.ViewEventListener):
 > not designed to be re-used by plugin code!
 
 
+### Completion Cancellation
+
+Any pending `on_query_completions` coroutine is cancelled,
+as soon as a new event is received from Sublime Text,
+before a new completion query task is scheduled.
+
+To send cancellation notificaitons to external applicaitons,
+catch `asyncio.CancelledError`.
+
+```py
+import sublime_aio
+
+
+class CompletionListener(sublime_aio.ViewEventListener):
+
+    async def on_query_completions(self, prefix, locations):
+        try:
+            return await get_completions_from_server()
+        except asyncio.CancelledError:
+            await send_cancel_notification_to_server()
+            return []
+```
+
+
 ## Text Change Listener
 
 ```py

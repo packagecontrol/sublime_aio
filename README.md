@@ -36,7 +36,7 @@ class CompletionListener(sublime_aio.ViewEventListener):
     parser = simdjson.Parser()
 
     async def on_query_completions(self, prefix, locations):
-        doc = self.parser.parse(data)
+        doc = await sublime_aio.run_in_worker(self.parser.parse(data))
         return (i["label"] for i in doc["items"])
 
     async def on_modified(self):

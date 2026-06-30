@@ -391,7 +391,7 @@ def run_in_worker(func: Callable[[Unpack[Ts]], T], *args: Unpack[Ts]) -> asyncio
     if _loop is None:
         raise RuntimeError("No event loop running!")
 
-    return _loop.run_in_executor(executor=None, func=func, *args)
+    return _loop.run_in_executor(None, func, *args)
 
 
 def active_window() -> Window:

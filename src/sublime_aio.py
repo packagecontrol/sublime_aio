@@ -317,7 +317,7 @@ def call_coroutine(coro: Coroutine[object, object, object]) -> asyncio.Handle:
 
         task = _loop.create_task(coro)
         _tasks.add(task)
-        task.add_done_callback(lambda _: _tasks.discard(task))
+        task.add_done_callback(_tasks.discard)
 
     return call_soon_threadsafe(callback, coro)
 
@@ -534,7 +534,7 @@ class CoroutineAdapter:
         if _loop is not None:
             task = _loop.create_task(self.coro_func(*args, **kwargs))
             _tasks.add(task)
-            task.add_done_callback(lambda _: _tasks.discard(task))
+            task.add_done_callback(_tasks.discard)
 
 
 class AsyncEventListenerType(ABCMeta):

@@ -904,7 +904,7 @@ class Window(sublime.Window):
         super().show_quick_panel(
             items=items,
             flags=flags,
-            selected_index=1,
+            selected_index=selected_index,
             placeholder=placeholder,
             on_highlight=highlight if on_highlight else None,
             on_select=select,

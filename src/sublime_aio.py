@@ -418,13 +418,15 @@ class ApplicationCommand(sublime_plugin.ApplicationCommand):
         try:
             call_coroutine(self.run(**args) if args else self.run())
         except TypeError as e:
-            if "required positional argument" in str(e):
-                if sublime_api.can_accept_input(self.name(), args):
-                    sublime.active_window().run_command(
-                        "show_overlay",
-                        {"overlay": "command_palette", "command": self.name(), "args": args},
-                    )
-                    return
+            if (
+                "required positional argument" in str(e)
+                and sublime_api.can_accept_input(self.name(), args)
+            ):
+                sublime.active_window().run_command(
+                    "show_overlay",
+                    {"overlay": "command_palette", "command": self.name(), "args": args},
+                )
+                return
             raise
 
     async def run(self, **kwargs) -> None:
@@ -452,14 +454,16 @@ class WindowCommand(sublime_plugin.WindowCommand):
         try:
             call_coroutine(self.run(**args) if args else self.run())
         except TypeError as e:
-            if "required positional argument" in str(e):
-                if sublime_api.window_can_accept_input(self.window.id(), self.name(), args):
-                    sublime_api.window_run_command(
-                        self.window.id(),
-                        "show_overlay",
-                        {"overlay": "command_palette", "command": self.name(), "args": args},
-                    )
-                    return
+            if (
+                "required positional argument" in str(e)
+                and sublime_api.window_can_accept_input(self.window.id(), self.name(), args)
+            ):
+                sublime_api.window_run_command(
+                    self.window.id(),
+                    "show_overlay",
+                    {"overlay": "command_palette", "command": self.name(), "args": args},
+                )
+                return
             raise
 
     async def run(self, **kwargs) -> None:
@@ -492,14 +496,16 @@ class ViewCommand(sublime_plugin.TextCommand):
         try:
             call_coroutine(self.run(**args) if args else self.run())
         except TypeError as e:
-            if "required positional argument" in str(e):
-                if sublime_api.view_can_accept_input(self.view.id(), self.name(), args):
-                    sublime_api.window_run_command(
-                        sublime_api.view_window(self.view.id()),
-                        "show_overlay",
-                        {"overlay": "command_palette", "command": self.name(), "args": args},
-                    )
-                    return
+            if (
+                "required positional argument" in str(e)
+                and sublime_api.window_can_accept_input(self.view.id(), self.name(), args)
+            ):
+                sublime_api.window_run_command(
+                    sublime_api.view_window(self.view.id()),
+                    "show_overlay",
+                    {"overlay": "command_palette", "command": self.name(), "args": args},
+                )
+                return
             raise
 
     async def run(self, **kwargs) -> None:

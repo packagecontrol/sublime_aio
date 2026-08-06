@@ -413,6 +413,11 @@ class ApplicationCommand(sublime_plugin.ApplicationCommand):
     An async `Command` instantiated just once.
     """
 
+    def __init__(self):
+        """:meta private:"""
+        if not iscoroutinefunction(self.run):
+            raise TypeError(f"{type(self).__name__}.run() must be an asyncio coroutine function!")
+
     def run_(self, edit_token: int, args: sublime.CommandArgs) -> None:
         args = self.filter_args(args)
         try:
@@ -443,11 +448,12 @@ class WindowCommand(sublime_plugin.WindowCommand):
     retrieved via `self.window <window>`.
     """
 
-    def __init__(self, window: sublime.Window):
+    def __init__(self, window: sublime.Window):    # pyright: ignore[reportMissingSuperCall]
         """:meta private:"""
-
-        self.window: Window = Window(window.id())
-        """ The asyncio supporting `Window` this command is attached to. """
+        self.window: Window = Window(window.id())  # pyright: ignore[reportIncompatibleVariableOverride]
+        """The asyncio supporting `Window` this command is attached to."""
+        if not iscoroutinefunction(self.run):
+            raise TypeError(f"{type(self).__name__}.run() must be an asyncio coroutine function!")
 
     def run_(self, edit_token: int, args: sublime.CommandArgs) -> None:
         args = self.filter_args(args)
@@ -490,6 +496,13 @@ class ViewCommand(sublime_plugin.TextCommand):
             self.view.close()
     ```
     """
+
+    def __init__(self, view: sublime.View):  # pyright: ignore[reportMissingSuperCall]
+        """:meta private:"""
+        self.view: View = View(view.id())    # pyright: ignore[reportIncompatibleVariableOverride]
+        """The asyncio supporting `View` this command is attached to."""
+        if not iscoroutinefunction(self.run):
+            raise TypeError(f"{type(self).__name__}.run() must be an asyncio coroutine function!")
 
     def run_(self, edit_token: int, args: sublime.CommandArgs) -> None:
         args = self.filter_args(args)

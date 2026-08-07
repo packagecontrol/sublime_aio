@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import concurrent.futures
+import inspect
 import io
 import os
 import sys
@@ -416,7 +417,8 @@ class ApplicationCommand(sublime_plugin.ApplicationCommand):
     def run_(self, edit_token: int, args: sublime.CommandArgs) -> None:
         args = self.filter_args(args)
         try:
-            call_coroutine(self.run(**args) if args else self.run())
+            if (maybe_coro := self.run(**args) if args else self.run()) and inspect.iscoroutine(maybe_coro):
+                call_coroutine(maybe_coro)
         except TypeError as e:
             if (
                 "required positional argument" in str(e)
@@ -452,7 +454,8 @@ class WindowCommand(sublime_plugin.WindowCommand):
     def run_(self, edit_token: int, args: sublime.CommandArgs) -> None:
         args = self.filter_args(args)
         try:
-            call_coroutine(self.run(**args) if args else self.run())
+            if (maybe_coro := self.run(**args) if args else self.run()) and inspect.iscoroutine(maybe_coro):
+                call_coroutine(maybe_coro)
         except TypeError as e:
             if (
                 "required positional argument" in str(e)
@@ -494,7 +497,10 @@ class ViewCommand(sublime_plugin.TextCommand):
     def run_(self, edit_token: int, args: sublime.CommandArgs) -> None:
         args = self.filter_args(args)
         try:
-            call_coroutine(self.run(**args) if args else self.run())
+            if inspect.iscoroutinefunction(self.run):
+                call_coroutine(self.run(**args) if args else self.run())
+            else:
+                self.run(edit_token, **args) if args else self.run(edit_token)
         except TypeError as e:
             if (
                 "required positional argument" in str(e)

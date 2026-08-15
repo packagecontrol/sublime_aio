@@ -47,7 +47,6 @@ __all__ = [
     "call_soon_threadsafe",
     "debounced",
     "EventListener",
-    "InputCancelledError",
     "run_coroutine",
     "TextChangeListener",
     "View",
@@ -746,16 +745,6 @@ class TextChangeListener(sublime_plugin.TextChangeListener, metaclass=AsyncTextC
     pass
 
 
-class InputCancelledError(Exception):
-    """
-    This class describes an input cancelled error.
-
-    It is raised whenever input panels or quick panels are closed via escape key.
-    """
-
-    pass
-
-
 class Window(sublime.Window):
     """
     This class describes an extended `sublime.Window`.
@@ -874,13 +863,13 @@ class Window(sublime.Window):
         caption: str,
         initial_text: str = "",
         on_change: Callable[[sublime.View, str], Coroutine[object, object, T]] | None = None,
-    ) -> str:
+    ) -> str | None:
         view = None
         fut = asyncio.Future()
 
         def cancel() -> None:
             if _loop:
-                _loop.call_soon_threadsafe(fut.set_exception, InputCancelledError)
+                _loop.call_soon_threadsafe(fut.set_result, None)
 
         def done(text: str) -> None:
             if _loop:
@@ -915,10 +904,7 @@ class Window(sublime.Window):
 
         def select(index):
             if _loop:
-                if index == -1:
-                    _loop.call_soon_threadsafe(fut.set_exception, InputCancelledError)
-                else:
-                    _loop.call_soon_threadsafe(fut.set_result, index)
+                _loop.call_soon_threadsafe(fut.set_result, index)
 
         super().show_quick_panel(
             items=items,

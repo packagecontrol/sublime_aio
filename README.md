@@ -267,20 +267,20 @@ class Window(sublime.Window):
 To await input of input panels within asyncio compliant commands,
 use `await sublime_aio.Window.show_input_panel()`.
 
-The coroutine returns selected index or raises `InputCancelledError`,
+The coroutine returns entered text or `None`,
 if it was closed via <kbd>escape</kbd>`.
 
 ```py
 class AsyncInputCommand(sublime_aio.WindowCommand):
     async def run(self):
-        try:
-            text = await self.window.show_input_panel(
-                caption="Async Input",
-                on_change=self.on_change
-            )
-            print("got", text)
-        except sublime_aio.InputCancelledError:
+        text = await self.window.show_input_panel(
+            caption="Async Input",
+            on_change=self.on_change
+        )
+        if text is None:
             print("input cancelled")
+        else:
+            print("got", text)
 
     async def on_change(self, view: sublime.View, text: str) -> None:
         """Optional content changed event handler"""
@@ -293,16 +293,16 @@ class AsyncInputCommand(sublime_aio.WindowCommand):
 To await selected quick panel items within asyncio compliant commands,
 use `await sublime_aio.Window.show_quick_panel()`.
 
-The coroutine returns selected index or raises `InputCancelledError`,
+The coroutine returns selected index or -1,
 if it was closed via <kbd>escape</kbd>`.
 
 ```py
 class AsyncQuickPanelCommand(sublime_aio.WindowCommand):
     async def run(self):
-        try:
-            index = await self.window.show_quick_panel(["foo", "bar"], on_highlight=self.on_highlight)
+        index = await self.window.show_quick_panel(["foo", "bar"], on_highlight=self.on_highlight)
+        if index > -1
             print("got", index)
-        except sublime_aio.InputCancelledError:
+        else:
             print("quick panel cancelled")
 
     async def on_highlight(self, index: int) -> None:

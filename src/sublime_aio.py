@@ -66,7 +66,7 @@ __version__ = "0.2.5"
 try:
     _loop, _tasks, _thread = sublime_plugin._sublime_aio_globals
 except AttributeError:
-    _loop = asyncio.new_event_loop()
+    _loop = asyncio.get_event_loop()
     _loop.set_default_executor(
         concurrent.futures.ThreadPoolExecutor(thread_name_prefix="sublime_aio.worker")
     )

@@ -61,17 +61,19 @@ __version__ = "0.2.4"
 
 # ---- [ internal ] -----------------------------------------------------------
 
-_loop: asyncio.AbstractEventLoop | None = None
-_tasks = set()
-_thread: Thread | None = None
-
-if _loop is None:
+# Make sure to re-use existing loop after library upgrades by (re-)storing
+# loop reference in sublime_plugin module, which doesn't change at runtime.
+try:
+    _loop, _tasks, _thread = sublime_plugin._sublime_aio_globals
+except AttributeError:
     _loop = asyncio.new_event_loop()
     _loop.set_default_executor(
         concurrent.futures.ThreadPoolExecutor(thread_name_prefix="sublime_aio.worker")
     )
+    _tasks = set()
     _thread = Thread(target=_loop.run_forever, name="sublime_aio", daemon=True)
     _thread.start()
+    sublime_plugin._sublime_aio_globals = (_loop, _tasks, _thread)
 
 
 class ExitEvent:

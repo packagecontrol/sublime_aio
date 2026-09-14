@@ -471,7 +471,7 @@ async def open_dialog(
     """
     fut = asyncio.Future()
 
-    def callback(items):
+    def callback(items: str | list[str] | None):
         if _loop:
             _loop.call_soon_threadsafe(fut.set_result, items)
 
@@ -501,7 +501,7 @@ async def save_dialog(
     """
     fut = asyncio.Future()
 
-    def callback(items):
+    def callback(items: str | list[str] | None):
         if _loop:
             _loop.call_soon_threadsafe(fut.set_result, items)
 
@@ -524,7 +524,7 @@ async def select_folder_dialog(directory: str | None = None, multi_select: bool 
     """
     fut = asyncio.Future()
 
-    def callback(items):
+    def callback(items: str | list[str] | None):
         if _loop:
             _loop.call_soon_threadsafe(fut.set_result, items)
 
@@ -546,7 +546,7 @@ async def choose_font_dialog(default: dict[str, sublime.Value] | None = None):
     """
     fut = asyncio.Future()
 
-    def callback(font):
+    def callback(font: sublime.Value):
         if _loop:
             _loop.call_soon_threadsafe(fut.set_result, font)
 

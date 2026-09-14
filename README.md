@@ -262,6 +262,28 @@ class Window(sublime.Window):
 ```
 
 
+### Using Dialogs
+
+To display a modal "Yes or No" dialog, use `await sublime_aio.yes_no_cancel_dialog()`.
+
+```py
+class AsyncYesNoDialogCommand(sublime_aio.WindowCommand):
+    async def run(self):
+        result = await sublime_aio.yes_no_cancel_dialog("Yes or No?")
+        if result == sublime.DialogResult.YES:
+            print("Got a Yes!")
+```
+
+To display a modal "Open File" dialog, use `await sublime_aio.open_dialog()`.
+
+```py
+class AsyncOpenDialogCommand(sublime_aio.WindowCommand):
+    async def run(self):
+        file_name = await sublime_aio.open_dialog()
+        print(f"Selected file is {file_name}")
+```
+
+
 ### Using Input Panels
 
 To await input of input panels within asyncio compliant commands,

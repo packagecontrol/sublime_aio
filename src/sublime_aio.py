@@ -411,6 +411,150 @@ def windows() -> list[Window]:
     return [Window(id) for id in sublime_api.windows()]
 
 
+async def error_message(msg: str):
+    """ Display an error dialog. """
+    await run_in_worker(sublime.error_message, msg)
+
+
+async def message_dialog(msg: str):
+    """ Display a message dialog. """
+    await run_in_worker(sublime.message_dialog, msg)
+
+
+async def ok_cancel_dialog(msg: str, ok_title="", title="") -> bool:
+    """
+    Show a *ok / cancel* question dialog.
+
+    :param msg: The message to show in the dialog.
+    :param ok_title: Text to display on the *ok* button.
+    :param title: Title for the dialog. Windows only. :since:`4099`
+
+    :returns: Whether the user pressed the *ok* button.
+    """
+    return await run_in_worker(sublime.ok_cancel_dialog, msg, title, ok_title)
+
+
+async def yes_no_cancel_dialog(msg: str, yes_title="", no_title="", title="") -> sublime.DialogResult:
+    """
+    Show a *yes / no / cancel* question dialog.
+
+    :param msg: The message to show in the dialog.
+    :param yes_title: Text to display on the *yes* button.
+    :param no_title: Text to display on the *no* button.
+    :param title: Title for the dialog. Windows only. :since:`4099`
+    """
+    return sublime.DialogResult(await run_in_worker(sublime.yes_no_cancel_dialog, msg, title, yes_title, no_title))
+
+
+async def open_dialog(
+    file_types: list[tuple[str, list[str]]] = [],
+    directory: str | None = None,
+    multi_select: bool = False,
+    allow_folders: bool = False
+):
+    """
+    Show the open file dialog.
+
+    .. since:: 4075
+
+    :param file_types: A list of allowed file types, consisting of a description
+                       and a list of allowed extensions.
+    :param directory: The directory the dialog should start in.  Will use the
+                      virtual working directory if not provided.
+    :param multi_select: Whether to allow selecting multiple files. When ``True``
+                         the callback will be called with a list.
+    :param allow_folders: Whether to also allow selecting folders. Only works on
+                          macOS. If you only want to select folders use
+                          `select_folder_dialog`.
+
+    :return: Selected path(s) or ``None`` once the dialog is closed.
+    """
+    fut = asyncio.Future()
+
+    def callback(items):
+        if _loop:
+            _loop.call_soon_threadsafe(fut.set_result, items)
+
+    sublime.open_dialog(callback, file_types, directory, multi_select, allow_folders)
+    return await fut
+
+
+async def save_dialog(
+    file_types: list[tuple[str, list[str]]] = [],
+    directory: str | None = None,
+    name: str | None = None,
+    extension: str | None = None
+):
+    """
+    Show the save file dialog
+
+    .. since:: 4075
+
+    :param file_types: A list of allowed file types, consisting of a description
+                       and a list of allowed extensions.
+    :param directory: The directory the dialog should start in.  Will use the
+                      virtual working directory if not provided.
+    :param name: The default name of the file in the save dialog.
+    :param extension: The default extension used in the save dialog.
+
+    :return: Selected path(s) or ``None`` once the dialog is closed.
+    """
+    fut = asyncio.Future()
+
+    def callback(items):
+        if _loop:
+            _loop.call_soon_threadsafe(fut.set_result, items)
+
+    sublime.save_dialog(callback, file_types, directory, name, extension)
+    return await fut
+
+
+async def select_folder_dialog(directory: str | None = None, multi_select: bool = False):
+    """
+    Show the select folder dialog.
+
+    .. since:: 4075
+
+    :param directory: The directory the dialog should start in.  Will use the
+                      virtual working directory if not provided.
+    :param multi_select: Whether to allow selecting multiple files. When ``True``
+                         the callback will be called with a list.
+
+    :return: Selected path(s) or ``None`` once the dialog is closed.
+    """
+    fut = asyncio.Future()
+
+    def callback(items):
+        if _loop:
+            _loop.call_soon_threadsafe(fut.set_result, items)
+
+    sublime.select_folder_dialog(callback, directory, multi_select)
+    return await fut
+
+
+async def choose_font_dialog(default: dict[str, sublime.Value] | None = None):
+    """
+    Show a dialog for selecting a font.
+
+    .. since:: 4157
+
+    :param callback: Called with the font options, matching the format used in
+                     settings (eg. ``{ "font_face": "monospace" }``). May be
+                     called more than once, or will be called with ``None`` if
+                     the dialog is cancelled.
+    :param default: The default values to select/return. Same format as the
+                    argument passed to `callback`.
+    """
+    fut = asyncio.Future()
+
+    def callback(font):
+        if _loop:
+            _loop.call_soon_threadsafe(fut.set_result, font)
+
+    sublime.choose_font_dialog(callback, default)
+    return await fut
+
+
 class ApplicationCommand(sublime_plugin.ApplicationCommand):
     """
     An async `Command` instantiated just once.

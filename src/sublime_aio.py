@@ -538,12 +538,11 @@ async def choose_font_dialog(default: dict[str, sublime.Value] | None = None):
 
     .. since:: 4157
 
-    :param callback: Called with the font options, matching the format used in
-                     settings (eg. ``{ "font_face": "monospace" }``). May be
-                     called more than once, or will be called with ``None`` if
-                     the dialog is cancelled.
     :param default: The default values to select/return. Same format as the
                     argument passed to `callback`.
+
+    :returns: font options, matching the format used in settings
+              (e.g. ``{"font_face": "monospace" }``) or ``None``, if cancelled.
     """
     fut = asyncio.Future()
 

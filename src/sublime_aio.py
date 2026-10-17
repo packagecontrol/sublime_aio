@@ -803,8 +803,6 @@ class EventListener(sublime_plugin.EventListener, metaclass=AsyncEventListenerTy
             return sublime.CompletionList(["item1", "item2"])
     """
 
-    pass
-
 
 class ViewEventListener(sublime_plugin.ViewEventListener, metaclass=AsyncEventListenerType):
     """
@@ -824,8 +822,6 @@ class ViewEventListener(sublime_plugin.ViewEventListener, metaclass=AsyncEventLi
             # note: CompletionLists must return in resolved state!
             return sublime.CompletionList(["item1", "item2"])
     """
-
-    pass
 
 
 class AsyncTextChangeListenerType(ABCMeta):
@@ -887,8 +883,6 @@ class TextChangeListener(sublime_plugin.TextChangeListener, metaclass=AsyncTextC
         A reload does not trigger text changes. If the contents of the buffer
         are required here use `View.substr`.
     """
-
-    pass
 
 
 class Window(sublime.Window):

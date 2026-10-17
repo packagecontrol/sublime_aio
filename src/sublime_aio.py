@@ -1065,6 +1065,17 @@ class Window(sublime.Window):
 
 
 class View(sublime.View):
+    """
+    Represents a view into a text `Buffer`.
+
+    Note that multiple views may refer to the same `Buffer`, but they have their
+    own unique selection and geometry. A list of these may be gotten using
+    `View.clones()` or `Buffer.views()`.
+    """
+
+    def buffer(self) -> Buffer:
+        """ :returns: The `Buffer` for which this is a view. """
+        return Buffer(sublime_api.view_buffer_id(self.view_id))
 
     def window(self) -> Window | None:
         """
@@ -1079,3 +1090,23 @@ class View(sublime.View):
     def clones(self) -> list[View]:
         """ :returns: All the other views into the same `Buffer`. See `View`. """
         return list(map(View, sublime_api.view_clones(self.view_id)))
+
+
+class Buffer(sublime.Buffer):
+    """
+    Represents a text buffer. Multiple `View` objects may share the same buffer.
+
+    .. since:: 4081
+    """
+
+    def views(self) -> list[View]:
+        """
+        Returns a list of all views that are associated with this buffer.
+        """
+        return list(map(View, sublime_api.buffer_views(self.buffer_id)))
+
+    def primary_view(self) -> View:
+        """
+        The primary view associated with this buffer.
+        """
+        return View(sublime_api.buffer_primary_view(self.buffer_id))

@@ -908,7 +908,7 @@ class Window(sublime.Window):
         else:
             return View(view_id)
 
-    def new_file(self, flags=sublime.NewFileFlags.NONE, syntax="") -> View:
+    def new_file(self, flags: sublime.NewFileFlags = 0, syntax="") -> View:
         """
         Create a new empty file.
 
@@ -918,7 +918,7 @@ class Window(sublime.Window):
         """
         return View(sublime_api.window_new_file(self.window_id, flags, syntax))
 
-    def open_file(self, fname: str, flags=sublime.NewFileFlags.NONE, group=-1) -> View:
+    def open_file(self, fname: str, flags: sublime.NewFileFlags = 0, group=-1) -> View:
         """
         Open the named file. If the file is already opened, it will be brought
         to the front. Note that as file loading is asynchronous, operations on
@@ -1038,7 +1038,7 @@ class Window(sublime.Window):
     async def show_quick_panel(
         self,
         items: list[str] | list[list[str]] | list[sublime.QuickPanelItem],
-        flags: sublime.QuickPanelFlags = sublime.QuickPanelFlags.NONE,
+        flags: sublime.QuickPanelFlags = 0,
         selected_index: int = -1,
         on_highlight: Callable[[int], Coroutine[object, object, T]] | None = None,
         placeholder: str | None = None,
